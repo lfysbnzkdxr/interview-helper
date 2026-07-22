@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "deploy": "vite build && node C:/Users/Lfy/AppData/Roaming/npm/node_modules/wrangler/bin/wrangler.js pages deploy dist --project-name=interview-helper"
+    "deploy": "vite build && npx wrangler pages deploy dist --project-name=interview-helper"
   },
   "dependencies": {
     "vue": "^3.4.0",

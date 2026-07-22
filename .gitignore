@@ -6,6 +6,9 @@ dist/
 *.local
 .env
 .env.local
+
+# Infrastructure config - contains real D1 database ID
+wrangler.toml
 # Dependencies
 node_modules
 .pnp

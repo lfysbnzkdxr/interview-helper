@@ -1,3 +1,6 @@
+# ⚠️ 复制此文件为 wrangler.toml 并填写你自己的配置
+# 不要将 wrangler.toml 提交到公开仓库（含真实 database_id）
+
 name = "interview-helper"
 compatibility_date = "2024-01-01"
 pages_build_output_dir = "dist"
@@ -5,13 +8,14 @@ pages_build_output_dir = "dist"
 [[d1_databases]]
 binding = "DB"
 database_name = "interview-helper-db"
-database_id = "064c1bda-61b2-4fc4-80f8-fb09e85b69dc"
+# 替换为你的 D1 数据库 ID
+database_id = "your-d1-database-id-here"
 
 [vars]
 QUALITY_THRESHOLD = "70"
 
-# Secrets (通过 wrangler secret put 设置):
+# 通过 wrangler secret put 设置以下 Secrets:
 # DEEPSEEK_API_KEY  — DeepSeek API 密钥
 # JWT_SECRET        — JWT 签名密钥（随机 64 字符）
 # ADMIN_USERNAME    — 管理员用户名
-# ADMIN_PASSWORD_HASH — bcrypt 哈希后的密码
+# ADMIN_PASSWORD_HASH — SHA-256 哈希后的密码
