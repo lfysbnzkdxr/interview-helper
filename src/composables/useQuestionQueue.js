@@ -27,8 +27,9 @@ export function useQuestionQueue() {
   const progress = computed(() => `${currentIndex.value + 1} / ${queue.value.length}`)
 
   function getPool(diff) {
-    if (diff === '全部') return [...storeQuestions.value]
-    return storeQuestions.value.filter(q => q.difficulty === diff)
+    const visible = storeQuestions.value.filter(q => !q.hidden)
+    if (diff === '全部') return visible
+    return visible.filter(q => q.difficulty === diff)
   }
 
   function initQueue(diff) {

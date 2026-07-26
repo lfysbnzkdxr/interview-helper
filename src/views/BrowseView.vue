@@ -29,8 +29,9 @@ const activeId = computed(() => {
 })
 
 const filteredQuestions = computed(() => {
-  if (activeName.value === null) return questions.value
-  return questions.value.filter(q => q.category === activeName.value)
+  const visible = questions.value.filter(q => !q.hidden)
+  if (activeName.value === null) return visible
+  return visible.filter(q => q.category === activeName.value)
 })
 
 function handleSelect(id) {

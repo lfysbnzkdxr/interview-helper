@@ -19,8 +19,8 @@ export function useQuestionBank() {
       await initDB()
       const db = await getDB()
       const allQuestions = await db.getAll('questions')
-      // 过滤隐藏的内置题
-      questions.value = allQuestions.filter(q => !(q.builtIn && q.hidden))
+      // 保留所有题目（含隐藏），各视图自行过滤
+      questions.value = allQuestions
       const catSetting = await db.get('settings', 'categories')
       categories.value = catSetting?.value || []
 
@@ -96,20 +96,14 @@ export function useQuestionBank() {
   }
 
   /**
-   * 删除题目（内置题不可删除，只能隐藏）
+   * 删除题目
    */
   async function deleteQuestion(id) {
     const db = await getDB()
     const existing = await db.get('questions', id)
     if (!existing) return
-    if (existing.builtIn) {
-      // 内置题只能隐藏
-      await updateQuestion(id, { hidden: true })
-      questions.value = questions.value.filter(q => q.id !== id)
-    } else {
-      await db.delete('questions', id)
-      questions.value = questions.value.filter(q => q.id !== id)
-    }
+    await db.delete('questions', id)
+    questions.value = questions.value.filter(q => q.id !== id)
   }
 
   /**
@@ -127,15 +121,12 @@ export function useQuestionBank() {
   async function toggleHidden(id) {
     const db = await getDB()
     const existing = await db.get('questions', id)
-    if (!existing || !existing.builtIn) return
-    const newHidden = !existing.hidden
-    await updateQuestion(id, { hidden: newHidden })
-    if (newHidden) {
-      questions.value = questions.value.filter(q => q.id !== id)
-    } else {
-      const updated = await db.get('questions', id)
-      questions.value.push(updated)
-    }
+    if (!existing) return
+    await updateQuestion(id, { hidden: !existing.hidden })
+  }
+
+  async function setHidden(id, hidden) {
+    await updateQuestion(id, { hidden })
   }
 
   // ===== 设置相关 =====
@@ -352,6 +343,7 @@ export function useQuestionBank() {
     deleteQuestion,
     deleteQuestions,
     toggleHidden,
+    setHidden,
     getApiConfig,
     saveApiConfig,
     getCategories,

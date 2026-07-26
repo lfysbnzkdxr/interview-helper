@@ -4,7 +4,7 @@ import { useQuestionBank } from '../stores/useQuestionBank.js'
 import { renderMarkdown } from '../utils/markdown.js'
 import { getDifficultyColor } from '../utils/helpers.js'
 
-const { questions, categories, loading, load, deleteQuestion, deleteQuestions, toggleHidden, updateQuestion, saveCategories } = useQuestionBank()
+const { questions, categories, loading, load, deleteQuestion, deleteQuestions, toggleHidden, setHidden, updateQuestion, saveCategories } = useQuestionBank()
 
 const searchQuery = ref('')
 const filterCategory = ref('')
@@ -84,6 +84,20 @@ async function handleBatchDelete() {
   selectedIds.value = []
 }
 
+async function handleBatchHide() {
+  for (const id of selectedIds.value) {
+    await setHidden(id, true)
+  }
+  selectedIds.value = []
+}
+
+async function handleBatchUnhide() {
+  for (const id of selectedIds.value) {
+    await setHidden(id, false)
+  }
+  selectedIds.value = []
+}
+
 function onBatchCategoryChange(cat) {
   if (cat === '__new__') {
     showBatchNewCategory.value = true
@@ -104,7 +118,12 @@ async function confirmBatchNewCategory() {
   }
   showBatchNewCategory.value = false
   batchNewCategoryName.value = ''
-  await handleBatchMove(name)
+  // 用户点击“确定”创建分类时意图已明确，直接执行移动
+  for (const id of selectedIds.value) {
+    await updateQuestion(id, { category: name })
+  }
+  selectedIds.value = []
+  batchCategory.value = ''
 }
 
 function cancelBatchNewCategory() {
@@ -194,6 +213,8 @@ function cancelEdit() {
         <button @click="confirmBatchNewCategory" class="px-2 py-1 rounded text-xs font-medium bg-blue-500 text-white hover:bg-blue-600">确定</button>
         <button @click="cancelBatchNewCategory" class="px-2 py-1 rounded text-xs font-medium bg-gray-200 text-gray-600 hover:bg-gray-300">取消</button>
       </div>
+      <button @click="handleBatchHide" class="px-3 py-1 rounded text-xs font-medium bg-gray-500 text-white hover:bg-gray-600">批量隐藏</button>
+      <button @click="handleBatchUnhide" class="px-3 py-1 rounded text-xs font-medium bg-green-500 text-white hover:bg-green-600">取消隐藏</button>
       <button @click="handleBatchDelete" class="px-3 py-1 rounded text-xs font-medium bg-red-500 text-white hover:bg-red-600">批量删除</button>
       <button @click="selectedIds = []" class="px-3 py-1 rounded text-xs font-medium bg-gray-200 text-gray-600 hover:bg-gray-300">取消选择</button>
     </div>
@@ -246,6 +267,7 @@ function cancelEdit() {
                 <span class="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">{{ categories.includes(item.category) ? item.category : '未分类' }}</span>
                 <span v-if="item.builtIn" class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">内置</span>
                 <span v-else class="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-600">{{ item.source }}</span>
+                <span v-if="item.hidden" class="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">已隐藏</span>
               </div>
               <h3 class="mt-1 text-sm font-medium text-gray-800 truncate">{{ item.question }}</h3>
             </div>
@@ -259,8 +281,8 @@ function cancelEdit() {
           <!-- 操作按钮 -->
           <div class="px-3 py-2 bg-gray-50 border-t border-gray-100 flex gap-2">
             <button @click="startEdit(item)" class="px-3 py-1 rounded text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200">编辑</button>
-            <button v-if="item.builtIn" @click="toggleHidden(item.id)" class="px-3 py-1 rounded text-xs font-medium bg-gray-200 text-gray-600 hover:bg-gray-300">隐藏</button>
-            <button v-else @click="handleDelete(item.id)" class="px-3 py-1 rounded text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200">删除</button>
+            <button @click="toggleHidden(item.id)" class="px-3 py-1 rounded text-xs font-medium bg-gray-200 text-gray-600 hover:bg-gray-300">{{ item.hidden ? '取消隐藏' : '隐藏' }}</button>
+            <button @click="handleDelete(item.id)" class="px-3 py-1 rounded text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200">删除</button>
           </div>
         </template>
       </div>
