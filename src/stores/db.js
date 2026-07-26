@@ -54,7 +54,6 @@ export async function initDB() {
     value: {
       providers: [],
       activeId: '',
-      proxyUrl: '',
     },
   })
 

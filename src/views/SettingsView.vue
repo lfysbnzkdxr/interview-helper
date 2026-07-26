@@ -6,7 +6,7 @@ import { parseSyncCodeFromHash } from '../services/cloud-sync.js'
 
 const { questions, getApiConfig, saveApiConfig, getCategories, saveCategories, exportData, importData, resetToDefault, createMigration, previewCloudData, restoreFromCloud } = useQuestionBank()
 
-const apiConfig = ref({ providers: [], activeId: '', proxyUrl: '' })
+const apiConfig = ref({ providers: [], activeId: '' })
 const cats = ref([])
 const newCategory = ref('')
 const testResult = ref(null)
@@ -32,7 +32,7 @@ onMounted(async () => {
   const config = await getApiConfig()
   // 兼容旧格式迁移
   if (!config.providers) {
-    apiConfig.value = { providers: [], activeId: '', proxyUrl: config.proxyUrl || '' }
+    apiConfig.value = { providers: [], activeId: '' }
   } else {
     apiConfig.value = config
   }
@@ -65,6 +65,7 @@ function addFromPreset(preset) {
     apiFormat: preset.apiFormat,
     temperature: 0.3,
     keyPlaceholder: preset.keyPlaceholder,
+    needsProxy: preset.needsProxy || false,
   })
   if (!apiConfig.value.activeId) {
     apiConfig.value.activeId = preset.id
@@ -123,7 +124,7 @@ async function handleTest(provider) {
   testResult.value = null
   try {
     await saveApiConfig(apiConfig.value)
-    testResult.value = await testConnection({ ...provider, proxyUrl: apiConfig.value.proxyUrl || '' })
+    testResult.value = await testConnection(provider)
   } catch (e) {
     testResult.value = { success: false, error: e.message || '未知错误' }
   } finally {
@@ -328,13 +329,14 @@ function formatExpiry(ttl) {
           {{ showCustomForm ? '收起自定义' : '自定义提供商...' }}
         </button>
         <div v-if="showCustomForm" class="mt-3 space-y-2">
-          <input v-model="customProvider.name" placeholder="名称（如：通义千问）" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm" />
-          <input v-model="customProvider.baseUrl" placeholder="API 地址（如：https://xxx.com/v1/chat/completions）" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm" />
-          <input v-model="customProvider.models" placeholder="模型名（逗号分隔，如：qwen-max,qwen-plus）" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm" />
+          <input v-model="customProvider.name" placeholder="名称（如：Kimi K3）" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm" />
+          <input v-model="customProvider.baseUrl" placeholder="API 地址（如：https://api.moonshot.cn/v1/chat/completions）" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm" />
+          <input v-model="customProvider.models" placeholder="模型名（逗号分隔，如：k3,k3-thinking）" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm" />
           <select v-model="customProvider.apiFormat" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm">
             <option value="openai">OpenAI 兼容格式</option>
             <option value="anthropic">Anthropic (Claude) 格式</option>
           </select>
+          <p class="text-xs text-gray-400">支持的 API 域名：api.deepseek.com、open.bigmodel.cn、api.moonshot.cn、api.openai.com、api.anthropic.com、api.mimo.xiaomi.com</p>
           <button @click="addCustomProvider" class="px-4 py-2 rounded-lg text-sm font-medium bg-blue-500 text-white hover:bg-blue-600">确认添加</button>
         </div>
       </div>
@@ -400,18 +402,6 @@ function formatExpiry(ttl) {
       <!-- 测试结果 -->
       <div v-if="testResult" class="mt-2 text-sm" :class="testResult.success ? 'text-green-600' : 'text-red-600'">
         {{ testResult.success ? '连接成功！' : '连接失败: ' + testResult.error }}
-      </div>
-
-      <!-- 代理设置 -->
-      <div class="mt-4 pt-4 border-t border-gray-100">
-        <label class="block text-sm text-gray-600 mb-1">CORS 代理地址（可选，全局生效）</label>
-        <input
-          v-model="apiConfig.proxyUrl"
-          type="text"
-          placeholder="https://ih-llm-proxy.xxx.workers.dev"
-          class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-        />
-        <p class="text-xs text-gray-400 mt-1">由于浏览器 CORS 限制，直连可能失败。建议配置代理地址。留空则尝试直连。</p>
       </div>
 
       <div class="mt-4">

@@ -127,7 +127,7 @@ export function useQuestionBank() {
   async function getApiConfig() {
     const db = await getDB()
     const setting = await db.get('settings', 'apiConfig')
-    return setting?.value || { providers: [], activeId: '', proxyUrl: '' }
+    return setting?.value || { providers: [], activeId: '' }
   }
 
   async function saveApiConfig(config) {

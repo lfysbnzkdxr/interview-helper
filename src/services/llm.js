@@ -3,6 +3,7 @@ import { getDB } from '../stores/db.js'
 /**
  * 提供商预设
  * apiFormat: 'openai' = OpenAI 兼容格式 | 'anthropic' = Claude Messages API
+ * needsProxy: 不支持浏览器 CORS 的 API 需通过内置代理转发
  */
 export const PROVIDER_PRESETS = [
   {
@@ -12,6 +13,7 @@ export const PROVIDER_PRESETS = [
     models: ['deepseek-v4-flash', 'deepseek-v4-pro'],
     apiFormat: 'openai',
     keyPlaceholder: 'sk-...',
+    needsProxy: false,
   },
   {
     id: 'glm',
@@ -20,6 +22,7 @@ export const PROVIDER_PRESETS = [
     models: ['glm-4-flash', 'glm-4-plus', 'glm-4-long'],
     apiFormat: 'openai',
     keyPlaceholder: 'your-api-key',
+    needsProxy: false,
   },
   {
     id: 'openai',
@@ -28,6 +31,7 @@ export const PROVIDER_PRESETS = [
     models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4.1', 'gpt-4.1-mini'],
     apiFormat: 'openai',
     keyPlaceholder: 'sk-...',
+    needsProxy: true,
   },
   {
     id: 'claude',
@@ -36,6 +40,7 @@ export const PROVIDER_PRESETS = [
     models: ['claude-sonnet-4-20250514', 'claude-3-5-haiku-20241022'],
     apiFormat: 'anthropic',
     keyPlaceholder: 'sk-ant-...',
+    needsProxy: true,
   },
   {
     id: 'kimi',
@@ -44,6 +49,7 @@ export const PROVIDER_PRESETS = [
     models: ['moonshot-v1-8k', 'moonshot-v1-32k', 'moonshot-v1-128k'],
     apiFormat: 'openai',
     keyPlaceholder: 'sk-...',
+    needsProxy: false,
   },
   {
     id: 'mimo',
@@ -52,8 +58,12 @@ export const PROVIDER_PRESETS = [
     models: ['mimo-7b-rl', 'mimo-7b-base'],
     apiFormat: 'openai',
     keyPlaceholder: 'your-api-key',
+    needsProxy: true,
   },
 ]
+
+/** 内置代理地址（Pages Function，同域无 CORS 问题） */
+const BUILTIN_PROXY = '/api/llm-proxy'
 
 const OPTIMIZE_PROMPT = `你是一个面试题排版优化专家。请将以下面试问答优化为"面试官-求职者"对话格式。
 
@@ -69,12 +79,12 @@ const OPTIMIZE_PROMPT = `你是一个面试题排版优化专家。请将以下�
 
 /**
  * 获取多提供商配置
- * 返回 { providers: [...], activeId: string, proxyUrl: string }
+ * 返回 { providers: [...], activeId: string }
  */
 async function getConfig() {
   const db = await getDB()
   const setting = await db.get('settings', 'apiConfig')
-  return setting?.value || { providers: [], activeId: '', proxyUrl: '' }
+  return setting?.value || { providers: [], activeId: '' }
 }
 
 /**
@@ -92,7 +102,7 @@ async function getActiveProvider() {
   if (!active.apiKey) {
     throw new Error(`请先在设置中为「${active.name}」配置 API Key`)
   }
-  return { ...active, proxyUrl: config.proxyUrl || '' }
+  return active
 }
 
 /**
@@ -103,13 +113,30 @@ function cleanHeader(val) {
 }
 
 /**
+ * 判断提供商是否需要走内置代理
+ */
+function shouldUseProxy(provider) {
+  // 预设中有明确标记
+  if (provider.needsProxy !== undefined) return provider.needsProxy
+  // 自定义提供商：检查是否在已知支持 CORS 的域名列表中
+  const corsFriendlyHosts = ['api.deepseek.com', 'open.bigmodel.cn', 'api.moonshot.cn']
+  try {
+    const host = new URL(provider.baseUrl).hostname
+    return !corsFriendlyHosts.includes(host)
+  } catch {
+    return true
+  }
+}
+
+/**
  * 构建 OpenAI 兼容格式的请求
  */
 function buildOpenAIRequest(provider, messages, options = {}) {
   const apiKey = cleanHeader(provider.apiKey)
+  const useProxy = shouldUseProxy(provider)
   return {
-    url: provider.proxyUrl || provider.baseUrl,
-    headers: provider.proxyUrl
+    url: useProxy ? BUILTIN_PROXY : provider.baseUrl,
+    headers: useProxy
       ? { 'Content-Type': 'application/json', 'X-Api-Key': apiKey, 'X-Target-Url': cleanHeader(provider.baseUrl) }
       : { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
     body: {
@@ -126,9 +153,10 @@ function buildOpenAIRequest(provider, messages, options = {}) {
  */
 function buildAnthropicRequest(provider, systemPrompt, userContent, options = {}) {
   const apiKey = cleanHeader(provider.apiKey)
+  const useProxy = shouldUseProxy(provider)
   return {
-    url: provider.proxyUrl || provider.baseUrl,
-    headers: provider.proxyUrl
+    url: useProxy ? BUILTIN_PROXY : provider.baseUrl,
+    headers: useProxy
       ? { 'Content-Type': 'application/json', 'X-Api-Key': apiKey, 'X-Target-Url': cleanHeader(provider.baseUrl), 'X-Api-Format': 'anthropic' }
       : { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
     body: {
@@ -197,7 +225,7 @@ export async function optimizeQA(question, answer) {
 
 /**
  * 测试指定提供商的连接
- * @param {object} providerConfig - 提供商配置（包含 proxyUrl 字段）
+ * @param {object} providerConfig - 提供商配置
  */
 export async function testConnection(providerConfig) {
   try {
