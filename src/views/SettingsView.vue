@@ -173,6 +173,10 @@ async function removeCategory(name) {
     }
   }
   cats.value = cats.value.filter(c => c !== name)
+  // 保证「未分类」始终排在最后
+  const sorted = cats.value.filter(c => c !== '未分类')
+  if (cats.value.includes('未分类')) sorted.push('未分类')
+  cats.value = sorted
   await saveCategories(cats.value)
 }
 

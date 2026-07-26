@@ -1,10 +1,12 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useQuestionBank } from '../stores/useQuestionBank.js'
 import { optimizeQA } from '../services/llm.js'
 import { renderMarkdown } from '../utils/markdown.js'
 
-const { categories, addQuestion, load } = useQuestionBank()
+const { categories, addQuestion, load, saveCategories } = useQuestionBank()
+
+onMounted(() => load())
 
 const question = ref('')
 const answer = ref('')
@@ -19,7 +21,32 @@ const previewDialog = ref('')
 const previewQuestion = ref('')
 const previewDifficulty = ref('')
 
-const canSubmit = computed(() => question.value.trim() && answer.value.trim() && selectedCategory.value)
+const canSubmit = computed(() =>
+  question.value.trim() && answer.value.trim() &&
+  selectedCategory.value && selectedCategory.value !== '__new__'
+)
+
+// 新建分类
+const newCategoryName = ref('')
+const showNewCategory = computed(() => selectedCategory.value === '__new__')
+
+async function confirmNewCategory() {
+  const name = newCategoryName.value.trim()
+  if (!name) return
+  if (!categories.value.includes(name)) {
+    const cats = categories.value.filter(c => c !== '未分类')
+    cats.push(name)
+    if (categories.value.includes('未分类')) cats.push('未分类')
+    await saveCategories(cats)
+  }
+  selectedCategory.value = name
+  newCategoryName.value = ''
+}
+
+function cancelNewCategory() {
+  selectedCategory.value = ''
+  newCategoryName.value = ''
+}
 
 async function handleOptimize() {
   error.value = ''
@@ -27,7 +54,7 @@ async function handleOptimize() {
 
   if (!question.value.trim()) { error.value = '请输入面试问题'; return }
   if (!answer.value.trim()) { error.value = '请输入答案内容'; return }
-  if (!selectedCategory.value) { error.value = '请选择分类'; return }
+  if (!selectedCategory.value || selectedCategory.value === '__new__') { error.value = '请选择分类'; return }
 
   loading.value = true
   step.value = '正在连接 AI 服务...'
@@ -58,6 +85,10 @@ function handleManualSave() {
 async function handleSave() {
   error.value = ''
   try {
+    // 确保「未分类」进入分类列表
+    if (selectedCategory.value === '未分类' && !categories.value.includes('未分类')) {
+      await saveCategories([...categories.value, '未分类'])
+    }
     await addQuestion({
       category: selectedCategory.value,
       question: previewQuestion.value,
@@ -160,12 +191,26 @@ function cancelPreview() {
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">分类</label>
         <select
+          v-if="!showNewCategory"
           v-model="selectedCategory"
           class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none transition"
         >
           <option value="" disabled>选择分类</option>
           <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
+          <option v-if="!categories.includes('未分类')" value="未分类">未分类</option>
+          <option value="__new__">+ 新建分类...</option>
         </select>
+        <div v-else class="flex gap-2">
+          <input
+            v-model="newCategoryName"
+            type="text"
+            placeholder="输入新分类名称"
+            class="flex-1 px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none transition text-sm"
+            @keyup.enter="confirmNewCategory"
+          />
+          <button type="button" @click="confirmNewCategory" class="px-4 py-2 rounded-lg text-sm font-medium bg-blue-500 text-white hover:bg-blue-600">确定</button>
+          <button type="button" @click="cancelNewCategory" class="px-4 py-2 rounded-lg text-sm font-medium bg-gray-200 text-gray-700 hover:bg-gray-300">取消</button>
+        </div>
       </div>
 
       <div class="flex gap-3">
