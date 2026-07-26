@@ -230,7 +230,7 @@ function cancelEdit() {
     <!-- 题目列表 -->
     <div v-else class="space-y-2">
       <!-- 全选 -->
-      <label class="flex items-center gap-2 text-xs text-gray-500 mb-2 cursor-pointer">
+      <label class="inline-flex items-center gap-2 text-xs text-gray-500 mb-2 cursor-pointer">
         <input type="checkbox" :checked="selectedIds.length === filteredQuestions.length && filteredQuestions.length > 0" @change="selectAll" />
         全选 ({{ filteredQuestions.length }})
       </label>
