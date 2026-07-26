@@ -23,6 +23,22 @@ export function useQuestionBank() {
       questions.value = allQuestions.filter(q => !(q.builtIn && q.hidden))
       const catSetting = await db.get('settings', 'categories')
       categories.value = catSetting?.value || []
+
+      // 修复孤立分类：题目的分类不在当前列表中时，归为「未分类」
+      const catSet = new Set(categories.value)
+      const orphans = questions.value.filter(q => q.category && !catSet.has(q.category))
+      if (orphans.length > 0) {
+        for (const q of orphans) {
+          q.category = '未分类'
+          q.updatedAt = Date.now()
+          await db.put('questions', JSON.parse(JSON.stringify(q)))
+        }
+        if (!categories.value.includes('未分类')) {
+          categories.value.push('未分类')
+          await db.put('settings', { key: 'categories', value: JSON.parse(JSON.stringify(categories.value)) })
+        }
+      }
+
       loaded.value = true
     } finally {
       loading.value = false

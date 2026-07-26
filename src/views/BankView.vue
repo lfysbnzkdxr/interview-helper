@@ -96,8 +96,10 @@ async function handleBatchMove(cat) {
 }
 
 function startEdit(item) {
+  // 若题目分类已不在当前分类列表中，归为「未分类」
+  const cat = categories.value.includes(item.category) ? item.category : '未分类'
   editId.value = item.id
-  editForm.value = { question: item.question, dialog: item.dialog, difficulty: item.difficulty, category: item.category }
+  editForm.value = { question: item.question, dialog: item.dialog, difficulty: item.difficulty, category: cat }
   expandedId.value = null
 }
 
@@ -180,6 +182,7 @@ function cancelEdit() {
           <input v-model="editForm.question" class="w-full px-3 py-2 rounded border border-gray-300 text-sm" placeholder="问题" />
           <select v-model="editForm.category" class="px-3 py-2 rounded border border-gray-300 text-sm">
             <option v-for="cat in sortedCategories" :key="cat" :value="cat">{{ cat }}</option>
+            <option v-if="!sortedCategories.includes('未分类')" value="未分类">未分类</option>
           </select>
           <select v-model="editForm.difficulty" class="px-3 py-2 rounded border border-gray-300 text-sm">
             <option>初级</option><option>中级</option><option>高级</option>
@@ -198,7 +201,7 @@ function cancelEdit() {
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 flex-wrap">
                 <span class="text-xs px-2 py-0.5 rounded-full" :class="getDifficultyColor(item.difficulty)">{{ item.difficulty }}</span>
-                <span class="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">{{ item.category }}</span>
+                <span class="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">{{ categories.includes(item.category) ? item.category : '未分类' }}</span>
                 <span v-if="item.builtIn" class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">内置</span>
                 <span v-else class="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-600">{{ item.source }}</span>
               </div>
