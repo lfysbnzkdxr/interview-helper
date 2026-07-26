@@ -22,9 +22,10 @@ const ALLOWED_HOSTS = [
   'api.deepseek.com',
   'open.bigmodel.cn',
   'api.moonshot.cn',
+  'dashscope.aliyuncs.com',
+  'api.mimo.xiaomi.com',
   'api.openai.com',
   'api.anthropic.com',
-  'api.mimo.xiaomi.com',
 ]
 
 export async function onRequest(context) {

@@ -19,34 +19,25 @@ export const PROVIDER_PRESETS = [
     id: 'glm',
     name: '智谱 GLM',
     baseUrl: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
-    models: ['glm-4-flash', 'glm-4-plus', 'glm-4-long'],
+    models: ['glm-5.2', 'glm-5'],
     apiFormat: 'openai',
     keyPlaceholder: 'your-api-key',
     needsProxy: false,
   },
   {
-    id: 'openai',
-    name: 'OpenAI GPT',
-    baseUrl: 'https://api.openai.com/v1/chat/completions',
-    models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4.1', 'gpt-4.1-mini'],
-    apiFormat: 'openai',
-    keyPlaceholder: 'sk-...',
-    needsProxy: true,
-  },
-  {
-    id: 'claude',
-    name: 'Claude',
-    baseUrl: 'https://api.anthropic.com/v1/messages',
-    models: ['claude-sonnet-4-20250514', 'claude-3-5-haiku-20241022'],
-    apiFormat: 'anthropic',
-    keyPlaceholder: 'sk-ant-...',
-    needsProxy: true,
-  },
-  {
     id: 'kimi',
     name: 'Kimi (月之暗面)',
     baseUrl: 'https://api.moonshot.cn/v1/chat/completions',
-    models: ['moonshot-v1-8k', 'moonshot-v1-32k', 'moonshot-v1-128k'],
+    models: ['kimi-k3', 'kimi-k2.6'],
+    apiFormat: 'openai',
+    keyPlaceholder: 'sk-...',
+    needsProxy: false,
+  },
+  {
+    id: 'qwen',
+    name: '通义千问',
+    baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
+    models: ['qwen-plus', 'qwen-turbo'],
     apiFormat: 'openai',
     keyPlaceholder: 'sk-...',
     needsProxy: false,
@@ -55,7 +46,7 @@ export const PROVIDER_PRESETS = [
     id: 'mimo',
     name: 'MiMo (小米)',
     baseUrl: 'https://api.mimo.xiaomi.com/v1/chat/completions',
-    models: ['mimo-7b-rl', 'mimo-7b-base'],
+    models: ['mimo-v2.5-pro'],
     apiFormat: 'openai',
     keyPlaceholder: 'your-api-key',
     needsProxy: true,
@@ -119,7 +110,7 @@ function shouldUseProxy(provider) {
   // 预设中有明确标记
   if (provider.needsProxy !== undefined) return provider.needsProxy
   // 自定义提供商：检查是否在已知支持 CORS 的域名列表中
-  const corsFriendlyHosts = ['api.deepseek.com', 'open.bigmodel.cn', 'api.moonshot.cn']
+  const corsFriendlyHosts = ['api.deepseek.com', 'open.bigmodel.cn', 'api.moonshot.cn', 'dashscope.aliyuncs.com']
   try {
     const host = new URL(provider.baseUrl).hostname
     return !corsFriendlyHosts.includes(host)

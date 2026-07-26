@@ -329,14 +329,14 @@ function formatExpiry(ttl) {
           {{ showCustomForm ? '收起自定义' : '自定义提供商...' }}
         </button>
         <div v-if="showCustomForm" class="mt-3 space-y-2">
-          <input v-model="customProvider.name" placeholder="名称（如：Kimi K3）" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm" />
-          <input v-model="customProvider.baseUrl" placeholder="API 地址（如：https://api.moonshot.cn/v1/chat/completions）" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm" />
-          <input v-model="customProvider.models" placeholder="模型名（逗号分隔，如：k3,k3-thinking）" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm" />
+          <input v-model="customProvider.name" placeholder="名称（如：通义千问）" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm" />
+          <input v-model="customProvider.baseUrl" placeholder="API 地址（如：https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions）" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm" />
+          <input v-model="customProvider.models" placeholder="模型名（逗号分隔，如：qwen-max,qwen-plus）" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm" />
           <select v-model="customProvider.apiFormat" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm">
             <option value="openai">OpenAI 兼容格式</option>
             <option value="anthropic">Anthropic (Claude) 格式</option>
           </select>
-          <p class="text-xs text-gray-400">支持的 API 域名：api.deepseek.com、open.bigmodel.cn、api.moonshot.cn、api.openai.com、api.anthropic.com、api.mimo.xiaomi.com</p>
+          <p class="text-xs text-gray-400">支持的 API 域名：api.deepseek.com、open.bigmodel.cn、api.moonshot.cn、dashscope.aliyuncs.com、api.mimo.xiaomi.com、api.openai.com、api.anthropic.com</p>
           <button @click="addCustomProvider" class="px-4 py-2 rounded-lg text-sm font-medium bg-blue-500 text-white hover:bg-blue-600">确认添加</button>
         </div>
       </div>
