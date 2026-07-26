@@ -12,6 +12,17 @@ const expandedId = ref(null)
 const selectedIds = ref([])
 const editId = ref(null)
 const editForm = ref({ question: '', dialog: '', difficulty: '', category: '' })
+const batchCategory = ref('')
+
+// 分类排序：「未分类」始终排在最后
+const sortedCategories = computed(() => {
+  const cats = [...categories.value]
+  return cats.sort((a, b) => {
+    if (a === '未分类') return 1
+    if (b === '未分类') return -1
+    return 0
+  })
+})
 
 onMounted(() => { load() })
 
@@ -70,6 +81,19 @@ async function handleBatchDelete() {
   selectedIds.value = []
 }
 
+async function handleBatchMove(cat) {
+  if (!cat) return
+  if (!confirm(`确定将选中的 ${selectedIds.value.length} 道题移动到「${cat}」吗？`)) {
+    batchCategory.value = ''
+    return
+  }
+  for (const id of selectedIds.value) {
+    await updateQuestion(id, { category: cat })
+  }
+  selectedIds.value = []
+  batchCategory.value = ''
+}
+
 function startEdit(item) {
   editId.value = item.id
   editForm.value = { question: item.question, dialog: item.dialog, difficulty: item.difficulty, category: item.category }
@@ -113,7 +137,7 @@ function getDifficultyColor(d) {
       />
       <select v-model="filterCategory" class="px-3 py-2 rounded-lg border border-gray-300 text-sm">
         <option value="">全部分类</option>
-        <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
+        <option v-for="cat in sortedCategories" :key="cat" :value="cat">{{ cat }}</option>
       </select>
       <select v-model="filterDifficulty" class="px-3 py-2 rounded-lg border border-gray-300 text-sm">
         <option value="">全部难度</option>
@@ -124,8 +148,12 @@ function getDifficultyColor(d) {
     </div>
 
     <!-- 批量操作 -->
-    <div v-if="selectedIds.length > 0" class="flex items-center gap-3 mb-3 p-2 bg-yellow-50 rounded-lg border border-yellow-200">
+    <div v-if="selectedIds.length > 0" class="flex items-center gap-3 mb-3 p-2 bg-yellow-50 rounded-lg border border-yellow-200 flex-wrap">
       <span class="text-sm text-yellow-700">已选 {{ selectedIds.length }} 题</span>
+      <select v-model="batchCategory" @change="handleBatchMove(batchCategory)" class="px-2 py-1 rounded text-xs border border-gray-300 bg-white">
+        <option value="" disabled>移动到分类...</option>
+        <option v-for="cat in sortedCategories" :key="cat" :value="cat">{{ cat }}</option>
+      </select>
       <button @click="handleBatchDelete" class="px-3 py-1 rounded text-xs font-medium bg-red-500 text-white hover:bg-red-600">批量删除</button>
       <button @click="selectedIds = []" class="px-3 py-1 rounded text-xs font-medium bg-gray-200 text-gray-600 hover:bg-gray-300">取消选择</button>
     </div>
@@ -155,7 +183,7 @@ function getDifficultyColor(d) {
         <div v-if="editId === item.id" class="p-4 space-y-3">
           <input v-model="editForm.question" class="w-full px-3 py-2 rounded border border-gray-300 text-sm" placeholder="问题" />
           <select v-model="editForm.category" class="px-3 py-2 rounded border border-gray-300 text-sm">
-            <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
+            <option v-for="cat in sortedCategories" :key="cat" :value="cat">{{ cat }}</option>
           </select>
           <select v-model="editForm.difficulty" class="px-3 py-2 rounded border border-gray-300 text-sm">
             <option>初级</option><option>中级</option><option>高级</option>

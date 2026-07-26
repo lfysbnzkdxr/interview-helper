@@ -145,8 +145,10 @@ export function useQuestionBank() {
 
   async function saveCategories(cats) {
     const db = await getDB()
-    await db.put('settings', { key: 'categories', value: cats })
-    categories.value = cats
+    // 去除 Vue 响应式代理，转为纯数组（IndexedDB 结构化克隆不支持 Proxy）
+    const plain = [...cats]
+    await db.put('settings', { key: 'categories', value: plain })
+    categories.value = plain
   }
 
   // ===== 数据导入导出 =====

@@ -4,21 +4,50 @@ import CategoryTabs from '../components/browse/CategoryTabs.vue'
 import QuestionList from '../components/browse/QuestionList.vue'
 import { useQuestionBank } from '../stores/useQuestionBank.js'
 
-const { questions, categories, loading, load } = useQuestionBank()
+const { questions, categories, loading, load, saveCategories } = useQuestionBank()
 
-const activeCategory = ref(null)
+const activeName = ref(null) // 当前选中分类名称，null 表示「全部」
+
+// 分类排序：「未分类」始终排在最后
+const sortedCategories = computed(() => {
+  const cats = [...categories.value]
+  return cats.sort((a, b) => {
+    if (a === '未分类') return 1
+    if (b === '未分类') return -1
+    return 0
+  })
+})
 
 // 将分类字符串数组转为 CategoryTabs 需要的格式
-const categoryList = computed(() => categories.value.map((name, i) => ({ id: i + 1, display_name: name })))
+const categoryList = computed(() => sortedCategories.value.map((name, i) => ({ id: i + 1, display_name: name })))
+
+// 根据名称反查当前 activeId（拖拽重排后 id 会变，需动态计算）
+const activeId = computed(() => {
+  if (activeName.value === null) return null
+  const item = categoryList.value.find(c => c.display_name === activeName.value)
+  return item ? item.id : null
+})
 
 const filteredQuestions = computed(() => {
-  if (activeCategory.value === null) return questions.value
-  const catName = categories.value[activeCategory.value - 1]
-  return questions.value.filter(q => q.category === catName)
+  if (activeName.value === null) return questions.value
+  return questions.value.filter(q => q.category === activeName.value)
 })
 
 function handleSelect(id) {
-  activeCategory.value = id
+  if (id === null) {
+    activeName.value = null
+  } else {
+    const item = categoryList.value.find(c => c.id === id)
+    activeName.value = item ? item.display_name : null
+  }
+}
+
+// 拖拽排序后持久化新顺序
+async function handleReorder(names) {
+  // 保证「未分类」始终在最后
+  const sorted = names.filter(n => n !== '未分类')
+  if (names.includes('未分类')) sorted.push('未分类')
+  await saveCategories(sorted)
 }
 
 onMounted(() => {
@@ -32,8 +61,9 @@ onMounted(() => {
     <div class="border-b border-gray-200 mb-4">
       <CategoryTabs
         :categories="categoryList"
-        :active-id="activeCategory"
+        :active-id="activeId"
         @select="handleSelect"
+        @reorder="handleReorder"
       />
     </div>
 

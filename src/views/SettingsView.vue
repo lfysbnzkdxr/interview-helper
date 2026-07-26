@@ -4,7 +4,7 @@ import { useQuestionBank } from '../stores/useQuestionBank.js'
 import { testConnection, PROVIDER_PRESETS } from '../services/llm.js'
 import { parseSyncCodeFromHash } from '../services/cloud-sync.js'
 
-const { questions, getApiConfig, saveApiConfig, getCategories, saveCategories, exportData, importData, resetToDefault, createMigration, previewCloudData, restoreFromCloud } = useQuestionBank()
+const { questions, load, getApiConfig, saveApiConfig, getCategories, saveCategories, updateQuestion, exportData, importData, resetToDefault, createMigration, previewCloudData, restoreFromCloud } = useQuestionBank()
 
 const apiConfig = ref({ providers: [], activeId: '' })
 const cats = ref([])
@@ -29,6 +29,7 @@ const codeCopied = ref(false)
 const linkCopied = ref(false)
 
 onMounted(async () => {
+  await load()
   const config = await getApiConfig()
   // 兼容旧格式迁移
   if (!config.providers) {
@@ -133,18 +134,38 @@ async function handleTest(provider) {
   }
 }
 
-function addCategory() {
+async function addCategory() {
   const name = newCategory.value.trim()
   if (!name) return
   if (cats.value.includes(name)) { message.value = '分类已存在'; return }
   cats.value.push(name)
-  saveCategories(cats.value)
+  await saveCategories(cats.value)
   newCategory.value = ''
 }
 
-function removeCategory(name) {
+async function removeCategory(name) {
+  if (name === '未分类') {
+    message.value = '「未分类」为默认分类，不可删除'
+    setTimeout(() => { message.value = '' }, 2000)
+    return
+  }
+  const affected = questions.value.filter(q => q.category === name)
+  const count = affected.length
+  const msg = count > 0
+    ? `分类「${name}」下有 ${count} 道题目，删除后这些题目将移至「未分类」。确定删除？`
+    : `确定删除分类「${name}」？`
+  if (!confirm(msg)) return
+  // 将关联题目迁移到「未分类」
+  if (count > 0) {
+    if (!cats.value.includes('未分类')) {
+      cats.value.push('未分类')
+    }
+    for (const q of affected) {
+      await updateQuestion(q.id, { category: '未分类' })
+    }
+  }
   cats.value = cats.value.filter(c => c !== name)
-  saveCategories(cats.value)
+  await saveCategories(cats.value)
 }
 
 async function handleExport() {
