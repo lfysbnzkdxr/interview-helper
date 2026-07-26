@@ -77,6 +77,17 @@ async function handleGenericProxy(request, url) {
   }
 }
 
+/** 允许转发的 LLM API 域名白名单（与 functions/api/llm-proxy.js 保持一致） */
+const ALLOWED_HOSTS = [
+  'api.deepseek.com',
+  'open.bigmodel.cn',
+  'api.moonshot.cn',
+  'dashscope.aliyuncs.com',
+  'api.mimo.xiaomi.com',
+  'api.openai.com',
+  'api.anthropic.com',
+]
+
 /**
  * LLM API 代理（原有逻辑）
  */
@@ -100,6 +111,23 @@ async function handleLLMProxy(request) {
     if (!targetUrl) {
       return new Response(JSON.stringify({ error: 'Missing X-Target-Url header' }), {
         status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    // 安全校验：只允许转发到白名单域名
+    let parsedUrl
+    try {
+      parsedUrl = new URL(targetUrl)
+    } catch {
+      return new Response(JSON.stringify({ error: 'Invalid target URL' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+    if (!ALLOWED_HOSTS.includes(parsedUrl.hostname)) {
+      return new Response(JSON.stringify({ error: `Host not allowed: ${parsedUrl.hostname}` }), {
+        status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }

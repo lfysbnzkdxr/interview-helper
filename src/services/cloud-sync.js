@@ -11,9 +11,11 @@ const API_BASE = '/api/sync'
  */
 export function generateSyncCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789' // 去掉易混淆的 I/O/0/1
+  const random = new Uint8Array(8)
+  crypto.getRandomValues(random)
   let code = ''
   for (let i = 0; i < 8; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)]
+    code += chars[random[i] % chars.length]
   }
   // 格式：XXXX-XXXX
   return `${code.slice(0, 4)}-${code.slice(4)}`
