@@ -2,8 +2,9 @@
 import { ref, computed, onMounted } from 'vue'
 import { useQuestionBank } from '../stores/useQuestionBank.js'
 import { testConnection, PROVIDER_PRESETS } from '../services/llm.js'
+import { parseSyncCodeFromHash } from '../services/cloud-sync.js'
 
-const { getApiConfig, saveApiConfig, getCategories, saveCategories, exportData, importData, resetToDefault } = useQuestionBank()
+const { questions, getApiConfig, saveApiConfig, getCategories, saveCategories, exportData, importData, resetToDefault, createMigration, previewCloudData, restoreFromCloud } = useQuestionBank()
 
 const apiConfig = ref({ providers: [], activeId: '', proxyUrl: '' })
 const cats = ref([])
@@ -17,6 +18,16 @@ const customProvider = ref({ name: '', baseUrl: '', models: '', apiFormat: 'open
 const showCustomForm = ref(false)
 const visibleKeys = ref({})
 
+// 云迁移相关状态
+const migrating = ref(false)
+const migrationResult = ref(null) // { code, link, syncedAt, expiresIn }
+const downloadCode = ref('')
+const downloading = ref(false)
+const previewData = ref(null) // { preview, _raw }
+const previewLoading = ref(false)
+const codeCopied = ref(false)
+const linkCopied = ref(false)
+
 onMounted(async () => {
   const config = await getApiConfig()
   // 兼容旧格式迁移
@@ -26,6 +37,11 @@ onMounted(async () => {
     apiConfig.value = config
   }
   cats.value = await getCategories()
+  // 解析 URL hash 中的同步码
+  const hashCode = parseSyncCodeFromHash()
+  if (hashCode) {
+    downloadCode.value = hashCode
+  }
 })
 
 const activeProvider = computed(() =>
@@ -167,6 +183,114 @@ async function handleReset() {
   cats.value = await getCategories()
   message.value = '已重置为默认题库'
   setTimeout(() => { message.value = '' }, 3000)
+}
+
+// ===== 云迁移操作 =====
+
+async function handleCreateMigration(ttl) {
+  migrating.value = true
+  migrationResult.value = null
+  try {
+    const result = await createMigration(ttl)
+    if (result.success) {
+      migrationResult.value = result
+    } else {
+      message.value = '上传失败: ' + result.error
+      setTimeout(() => { message.value = '' }, 4000)
+    }
+  } catch (e) {
+    message.value = '上传失败: ' + e.message
+    setTimeout(() => { message.value = '' }, 4000)
+  } finally {
+    migrating.value = false
+  }
+}
+
+async function handleCopyCode() {
+  if (!migrationResult.value) return
+  try {
+    await navigator.clipboard.writeText(migrationResult.value.code)
+    codeCopied.value = true
+    setTimeout(() => { codeCopied.value = false }, 2000)
+  } catch {
+    const input = document.createElement('input')
+    input.value = migrationResult.value.code
+    document.body.appendChild(input)
+    input.select()
+    document.execCommand('copy')
+    document.body.removeChild(input)
+    codeCopied.value = true
+    setTimeout(() => { codeCopied.value = false }, 2000)
+  }
+}
+
+async function handleCopyLink() {
+  if (!migrationResult.value) return
+  try {
+    await navigator.clipboard.writeText(migrationResult.value.link)
+    linkCopied.value = true
+    setTimeout(() => { linkCopied.value = false }, 2000)
+  } catch {
+    const input = document.createElement('input')
+    input.value = migrationResult.value.link
+    document.body.appendChild(input)
+    input.select()
+    document.execCommand('copy')
+    document.body.removeChild(input)
+    linkCopied.value = true
+    setTimeout(() => { linkCopied.value = false }, 2000)
+  }
+}
+
+async function handlePreview() {
+  const code = downloadCode.value.trim().toUpperCase()
+  if (!code || code.length < 4) {
+    message.value = '请输入有效的迁移码'
+    setTimeout(() => { message.value = '' }, 2000)
+    return
+  }
+  previewLoading.value = true
+  previewData.value = null
+  try {
+    const result = await previewCloudData(code)
+    if (result.success) {
+      previewData.value = result
+    } else {
+      message.value = result.error || '该迁移码无效或已过期'
+      setTimeout(() => { message.value = '' }, 4000)
+    }
+  } catch (e) {
+    message.value = '查询失败: ' + e.message
+    setTimeout(() => { message.value = '' }, 4000)
+  } finally {
+    previewLoading.value = false
+  }
+}
+
+async function handleRestore(mode) {
+  if (!previewData.value?._raw) return
+  downloading.value = true
+  try {
+    const result = await restoreFromCloud(previewData.value._raw, mode)
+    if (result.success) {
+      message.value = mode === 'overwrite' ? '✅ 已覆盖恢复成功' : '✅ 已合并恢复成功'
+      cats.value = await getCategories()
+      previewData.value = null
+      downloadCode.value = ''
+    } else {
+      message.value = '恢复失败: ' + result.error
+    }
+  } catch (e) {
+    message.value = '恢复失败: ' + e.message
+  } finally {
+    downloading.value = false
+    setTimeout(() => { message.value = '' }, 4000)
+  }
+}
+
+function formatExpiry(ttl) {
+  if (ttl <= 600) return '10 分钟'
+  return '24 小时'
 }
 </script>
 
@@ -321,6 +445,84 @@ async function handleReset() {
       <p class="text-xs text-gray-400 mt-3">
         导出/导入可用于跨设备迁移数据。重置将清除所有自定义题目并恢复内置题目。
       </p>
+    </section>
+
+    <!-- 云迁移 -->
+    <section class="bg-white rounded-lg border border-gray-200 p-5">
+      <h3 class="font-medium text-gray-800 mb-1">☁️ 云迁移</h3>
+      <p class="text-xs text-gray-400 mb-4">生成临时迁移码，在另一台设备上输入即可同步数据。迁移码过期后自动失效。</p>
+
+      <!-- 生成迁移码 -->
+      <div class="mb-4">
+        <label class="block text-xs text-gray-500 mb-2">上传当前数据并生成迁移码</label>
+        <div class="flex flex-wrap gap-3">
+          <button @click="handleCreateMigration(600)" :disabled="migrating" class="px-4 py-2 rounded-lg text-sm font-medium bg-green-100 text-green-700 hover:bg-green-200 disabled:opacity-50">
+            {{ migrating ? '上传中...' : '⬆️ 生成迁移码（10分钟有效）' }}
+          </button>
+          <button @click="handleCreateMigration(86400)" :disabled="migrating" class="px-4 py-2 rounded-lg text-sm font-medium bg-green-100 text-green-700 hover:bg-green-200 disabled:opacity-50">
+            {{ migrating ? '上传中...' : '⬆️ 生成迁移码（24小时有效）' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- 迁移码结果 -->
+      <div v-if="migrationResult" class="mb-4 p-4 rounded-lg bg-green-50 border border-green-200">
+        <p class="text-sm text-green-700 mb-2">✅ 数据已上传，迁移码将在 {{ formatExpiry(migrationResult.expiresIn) }}后失效</p>
+        <div class="flex items-center gap-2 mb-3">
+          <code class="flex-1 px-4 py-2.5 rounded-lg bg-white border border-green-200 text-lg font-mono font-bold tracking-widest text-center text-blue-700">{{ migrationResult.code }}</code>
+          <button @click="handleCopyCode" class="px-3 py-2.5 rounded-lg text-sm font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 whitespace-nowrap">
+            {{ codeCopied ? '✓ 已复制' : '复制码' }}
+          </button>
+        </div>
+        <div class="flex items-center gap-2">
+          <input :value="migrationResult.link" readonly class="flex-1 px-3 py-2 rounded-lg border border-green-200 text-xs text-gray-500 bg-white" />
+          <button @click="handleCopyLink" class="px-3 py-2 rounded-lg text-sm font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 whitespace-nowrap">
+            {{ linkCopied ? '✓ 已复制' : '复制链接' }}
+          </button>
+        </div>
+        <p class="text-xs text-gray-400 mt-2">在手机浏览器打开链接，可自动填充迁移码</p>
+      </div>
+
+      <!-- 分割线 -->
+      <div class="border-t border-gray-100 my-4"></div>
+
+      <!-- 从云端恢复 -->
+      <div>
+        <label class="block text-xs text-gray-500 mb-2">在新设备上恢复？输入迁移码</label>
+        <div class="flex items-center gap-2 mb-3">
+          <input
+            v-model="downloadCode"
+            type="text"
+            placeholder="XXXX-XXXX"
+            maxlength="32"
+            class="flex-1 px-3 py-2 rounded-lg border border-gray-300 text-sm font-mono tracking-wider uppercase focus:ring-2 focus:ring-blue-500 outline-none"
+          />
+          <button @click="handlePreview" :disabled="previewLoading" class="px-3 py-2 rounded-lg text-sm font-medium bg-orange-100 text-orange-700 hover:bg-orange-200 disabled:opacity-50 whitespace-nowrap">
+            {{ previewLoading ? '查询中...' : '⬇️ 查询' }}
+          </button>
+        </div>
+
+        <!-- 预览结果 -->
+        <div v-if="previewData" class="p-4 rounded-lg bg-orange-50 border border-orange-200">
+          <p class="text-sm text-gray-700 mb-1">云端备份内容：</p>
+          <p class="text-sm text-gray-600 mb-3">
+            <span class="font-medium">{{ previewData.preview.categoryCount }}</span> 个分类，
+            <span class="font-medium">{{ previewData.preview.questionCount }}</span> 道题目
+          </p>
+          <p class="text-xs text-gray-500 mb-3">你当前本地有 {{ questions.length }} 道题目</p>
+          <div class="flex flex-wrap gap-2">
+            <button @click="handleRestore('overwrite')" :disabled="downloading" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200 disabled:opacity-50">
+              {{ downloading ? '恢复中...' : '覆盖本地数据' }}
+            </button>
+            <button @click="handleRestore('merge')" :disabled="downloading" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 disabled:opacity-50">
+              {{ downloading ? '恢复中...' : '合并到本地' }}
+            </button>
+            <button @click="previewData = null" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-600 hover:bg-gray-200">
+              取消
+            </button>
+          </div>
+        </div>
+      </div>
     </section>
   </div>
 </template>

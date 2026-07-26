@@ -1,5 +1,6 @@
 import { ref, computed } from 'vue'
 import { getDB, generateId, initDB } from './db.js'
+import { uploadBackup, downloadBackup, generateSyncCode, getSyncLink } from '../services/cloud-sync.js'
 
 // 模块级状态（跨组件共享）
 const questions = ref([])
@@ -194,6 +195,65 @@ export function useQuestionBank() {
     await load()
   }
 
+  // ===== 云迁移（临时迁移码） =====
+
+  /**
+   * 生成迁移码并上传当前数据
+   * @param {number} ttl - 过期秒数（600 | 86400）
+   * @returns {Promise<{success, code?, link?, syncedAt?, expiresIn?, error?}>}
+   */
+  async function createMigration(ttl = 86400) {
+    const code = generateSyncCode()
+    const dataStr = await exportData()
+    const data = JSON.parse(dataStr)
+
+    const result = await uploadBackup(code, data, ttl)
+    if (result.success) {
+      return {
+        success: true,
+        code,
+        link: getSyncLink(code),
+        syncedAt: result.syncedAt,
+        expiresIn: result.expiresIn || ttl,
+      }
+    }
+    return result
+  }
+
+  /**
+   * 预览云端数据（不写入本地）
+   * @param {string} code - 迁移码
+   * @returns {Promise<{success, preview?, error?}>}
+   */
+  async function previewCloudData(code) {
+    const result = await downloadBackup(code)
+    if (!result.success) return result
+
+    const data = result.data
+    const questionCount = data.questions?.length || 0
+    const categoryCount = data.categories?.length || 0
+    return {
+      success: true,
+      preview: { questionCount, categoryCount, categories: data.categories || [] },
+      _raw: data, // 内部缓存，确认恢复时使用
+    }
+  }
+
+  /**
+   * 确认从云端恢复
+   * @param {object} data - previewCloudData 返回的 _raw 数据
+   * @param {'overwrite'|'merge'} mode
+   */
+  async function restoreFromCloud(data, mode = 'overwrite') {
+    try {
+      const innerData = JSON.stringify(data)
+      await importData(innerData, mode)
+      return { success: true }
+    } catch (e) {
+      return { success: false, error: '云端数据格式异常: ' + e.message }
+    }
+  }
+
   return {
     questions: visibleQuestions,
     categories,
@@ -213,5 +273,9 @@ export function useQuestionBank() {
     exportData,
     importData,
     resetToDefault,
+    // 云迁移
+    createMigration,
+    previewCloudData,
+    restoreFromCloud,
   }
 }
