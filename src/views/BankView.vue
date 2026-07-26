@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useQuestionBank } from '../stores/useQuestionBank.js'
 import { renderMarkdown } from '../utils/markdown.js'
+import { getDifficultyColor } from '../utils/helpers.js'
 
 const { questions, categories, loading, load, deleteQuestion, deleteQuestions, toggleHidden, updateQuestion } = useQuestionBank()
 
@@ -107,11 +108,6 @@ async function saveEdit() {
 
 function cancelEdit() {
   editId.value = null
-}
-
-function getDifficultyColor(d) {
-  const colors = { '初级': 'bg-green-100 text-green-700', '中级': 'bg-yellow-100 text-yellow-700', '高级': 'bg-red-100 text-red-700' }
-  return colors[d] || 'bg-gray-100 text-gray-700'
 }
 </script>
 

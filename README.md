@@ -14,8 +14,9 @@
 | **分类浏览** | 按分类和难度浏览题库中的所有问答 |
 | **创建问答** | 手动录入或 AI 优化，自动生成标准问答格式 |
 | **题库管理** | 搜索、筛选、编辑、删除、隐藏、批量操作 |
-| **多模型支持** | DeepSeek / GLM / OpenAI / Claude / Kimi / MiMo 自由配置 |
-| **数据导入导出** | JSON 文件导出/导入，支持跨设备迁移 |
+| **多模型支持** | DeepSeek / GLM / Kimi / 通义千问 / MiMo 预设，支持自定义提供商 |
+| **数据导入导出** | JSON 文件导出/导入，支持覆盖或合并 |
+| **云迁移** | 生成临时同步码，跨设备零登录迁移数据（10分钟/24小时过期） |
 | **内置题库** | 预置 37 道 AI 方向面试题，开箱即用 |
 
 ## 技术栈
@@ -26,9 +27,10 @@
 | 构建工具 | Vite 5 |
 | 样式方案 | Tailwind CSS 3 |
 | 数据存储 | IndexedDB（idb 库） |
-| AI 服务 | 用户自配 API Key（多提供商） |
-| CORS 代理 | Cloudflare Workers（可选，给不支持 CORS 的 API 用） |
-| 部署平台 | Cloudflare Pages（纯静态） |
+| AI 服务 | 用户自配 API Key（多提供商预设 + 自定义） |
+| 内置代理 | Cloudflare Pages Functions（LLM 代理 + KV 同步） |
+| 外置代理 | Cloudflare Workers（可选，给不支持 CORS 的 API 用） |
+| 部署平台 | Cloudflare Pages（静态前端 + Functions） |
 
 ## 快速开始
 
@@ -80,7 +82,8 @@ interview-helper/
 │   │   └── seed-questions.json # 37 道内置种子题目
 │   ├── router/index.js         # 路由配置
 │   ├── services/
-│   │   └── llm.js              # 多提供商 LLM 调用服务
+│   │   ├── llm.js              # 多提供商 LLM 调用服务
+│   │   └── cloud-sync.js       # 云迁移同步码服务
 │   ├── stores/
 │   │   ├── db.js               # IndexedDB 初始化
 │   │   └── useQuestionBank.js  # 题库 CRUD + 设置管理
@@ -96,8 +99,12 @@ interview-helper/
 │   ├── App.vue
 │   ├── main.js
 │   └── style.css
+├── functions/api/
+│   ├── llm-proxy.js            # LLM API 内置代理（Pages Function）
+│   └── sync.js                 # 云迁移同步接口（KV 存储）
 ├── worker/
-│   └── proxy.js                # 通用 CORS 代理 Worker
+│   └── proxy.js                # LLM API CORS 代理 Worker（外置可选）
+├── wrangler.toml               # Cloudflare KV 绑定配置
 ├── index.html
 ├── vite.config.js
 ├── tailwind.config.js
@@ -112,6 +119,7 @@ interview-helper/
 4. 在「题库管理」页管理所有题目
 5. 数据全部存储在浏览器 IndexedDB 中，清除浏览器数据会丢失
 6. 可通过「设置 → 数据管理 → 导出」备份为 JSON 文件
+7. 跨设备迁移：「设置 → 云迁移」生成同步码，在新设备输入即可恢复（支持覆盖/合并）
 
 ## 开源协议
 

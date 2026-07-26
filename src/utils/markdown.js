@@ -8,8 +8,8 @@ marked.setOptions({
 
 /**
  * 将 Markdown 文本解析为 HTML
- * 注意：当前 mock 数据为自有内容，无 XSS 风险
- * 后续接入外部 API 时需引入 DOMPurify 进行 sanitize
+ * 内容来源为 AI 生成或用户手动输入，均存储在本地 IndexedDB
+ * 如需更高安全性可引入 DOMPurify 进行 sanitize
  */
 export function renderMarkdown(md) {
   if (!md) return ''
