@@ -12,14 +12,19 @@ const routes = [
     component: () => import('../views/BrowseView.vue'),
   },
   {
-    path: '/submit',
-    name: 'Submit',
-    component: () => import('../views/SubmitView.vue'),
+    path: '/create',
+    name: 'Create',
+    component: () => import('../views/CreateView.vue'),
   },
   {
-    path: '/review',
-    name: 'Review',
-    component: () => import('../views/ReviewView.vue'),
+    path: '/bank',
+    name: 'Bank',
+    component: () => import('../views/BankView.vue'),
+  },
+  {
+    path: '/settings',
+    name: 'Settings',
+    component: () => import('../views/SettingsView.vue'),
   },
 ]
 

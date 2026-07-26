@@ -2,19 +2,23 @@
 import { ref, computed, onMounted } from 'vue'
 import CategoryTabs from '../components/browse/CategoryTabs.vue'
 import QuestionList from '../components/browse/QuestionList.vue'
-import { useQuestionsStore } from '../stores/questionsStore.js'
+import { useQuestionBank } from '../stores/useQuestionBank.js'
 
-const { categories, questions, loading, load } = useQuestionsStore()
+const { questions, categories, loading, load } = useQuestionBank()
 
-const activeCategoryId = ref(null)
+const activeCategory = ref(null)
+
+// 将分类字符串数组转为 CategoryTabs 需要的格式
+const categoryList = computed(() => categories.value.map((name, i) => ({ id: i + 1, display_name: name })))
 
 const filteredQuestions = computed(() => {
-  if (activeCategoryId.value === null) return questions.value
-  return questions.value.filter(q => q.category_id === activeCategoryId.value)
+  if (activeCategory.value === null) return questions.value
+  const catName = categories.value[activeCategory.value - 1]
+  return questions.value.filter(q => q.category === catName)
 })
 
 function handleSelect(id) {
-  activeCategoryId.value = id
+  activeCategory.value = id
 }
 
 onMounted(() => {
@@ -27,8 +31,8 @@ onMounted(() => {
     <!-- 分类 Tab -->
     <div class="border-b border-gray-200 mb-4">
       <CategoryTabs
-        :categories="categories"
-        :active-id="activeCategoryId"
+        :categories="categoryList"
+        :active-id="activeCategory"
         @select="handleSelect"
       />
     </div>

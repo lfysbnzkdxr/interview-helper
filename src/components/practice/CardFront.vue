@@ -1,5 +1,5 @@
 <script setup>
-import { getCategoryName, getDifficultyColor } from '../../utils/helpers.js'
+import { getDifficultyColor } from '../../utils/helpers.js'
 
 const props = defineProps({
   question: {
@@ -22,7 +22,7 @@ defineEmits(['flip'])
         {{ question.difficulty }}
       </span>
       <span class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-        {{ getCategoryName(question.category_id) }}
+        {{ question.category }}
       </span>
     </div>
 

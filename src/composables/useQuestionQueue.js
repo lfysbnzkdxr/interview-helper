@@ -1,5 +1,5 @@
 import { ref, computed } from 'vue'
-import { useQuestionsStore } from '../stores/questionsStore.js'
+import { useQuestionBank } from '../stores/useQuestionBank.js'
 
 const REFILL_THRESHOLD = 5
 
@@ -14,7 +14,7 @@ function shuffle(arr) {
 }
 
 export function useQuestionQueue() {
-  const { questions: storeQuestions, loading: storeLoading, load } = useQuestionsStore()
+  const { questions: storeQuestions, loading: storeLoading, load } = useQuestionBank()
 
   const queue = ref([])
   const currentIndex = ref(0)
