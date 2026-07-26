@@ -24,6 +24,13 @@ const aiError = ref('')
 const showSubQuestion = ref(false)
 const subQuestionText = ref('')
 
+// AI 润色对比
+const showCompare = ref(false)
+const originalDialog = ref('')
+const polishedDialog = ref('')
+const polishedDifficulty = ref('')
+const compareEditSide = ref(null) // null | 'original' | 'polished'
+
 // 分类排序：「未分类」始终排在最后
 const sortedCategories = computed(() => {
   const cats = [...categories.value]
@@ -166,15 +173,31 @@ async function handleAiPolish() {
   if (!editForm.value.dialog.trim()) { aiError.value = '对话内容为空，无法润色'; return }
   aiError.value = ''
   aiLoading.value = true
+  const targetId = editId.value
   try {
     const result = await polishDialog(editForm.value.question, editForm.value.dialog)
-    editForm.value.dialog = result.dialog || editForm.value.dialog
-    if (result.difficulty) editForm.value.difficulty = result.difficulty
+    if (editId.value !== targetId) return
+    originalDialog.value = editForm.value.dialog
+    polishedDialog.value = result.dialog || editForm.value.dialog
+    polishedDifficulty.value = result.difficulty || ''
+    compareEditSide.value = null
+    showCompare.value = true
   } catch (e) {
+    if (editId.value !== targetId) return
     aiError.value = e.message
   } finally {
     aiLoading.value = false
   }
+}
+
+function keepOriginal() {
+  showCompare.value = false
+}
+
+function keepPolished() {
+  editForm.value.dialog = polishedDialog.value
+  if (polishedDifficulty.value) editForm.value.difficulty = polishedDifficulty.value
+  showCompare.value = false
 }
 
 async function handleAppendSub() {
@@ -182,13 +205,16 @@ async function handleAppendSub() {
   if (!sub) return
   aiError.value = ''
   aiLoading.value = true
+  const targetId = editId.value
   try {
     const result = await appendSubQA(editForm.value.question, editForm.value.dialog, sub)
+    if (editId.value !== targetId) return
     editForm.value.dialog = result.dialog || editForm.value.dialog
     if (result.difficulty) editForm.value.difficulty = result.difficulty
     subQuestionText.value = ''
     showSubQuestion.value = false
   } catch (e) {
+    if (editId.value !== targetId) return
     aiError.value = e.message
   } finally {
     aiLoading.value = false
@@ -309,7 +335,7 @@ function cancelEdit() {
             </div>
             <div v-if="showSubQuestion" class="flex gap-2">
               <input v-model="subQuestionText" @keyup.enter="handleAppendSub"
-                placeholder="输入子问题，AI 将生成回答追加到对话末尾"
+                placeholder="输入子问题，AI 将生成回答"
                 class="flex-1 px-3 py-2 rounded border border-gray-300 text-sm" />
               <button @click="handleAppendSub" :disabled="aiLoading || !subQuestionText.trim()"
                 class="px-3 py-1.5 rounded text-xs font-medium bg-teal-500 text-white hover:bg-teal-600 disabled:opacity-50">
@@ -317,6 +343,7 @@ function cancelEdit() {
               </button>
             </div>
           </div>
+
           <div class="flex gap-2">
             <button @click="saveEdit" class="px-3 py-1.5 rounded text-xs font-medium bg-green-500 text-white hover:bg-green-600">保存</button>
             <button @click="cancelEdit" class="px-3 py-1.5 rounded text-xs font-medium bg-gray-200 text-gray-600 hover:bg-gray-300">取消</button>
@@ -354,4 +381,50 @@ function cancelEdit() {
       </div>
     </div>
   </div>
+
+  <!-- AI 润色对比面板（Teleport 到 body 避免被父容器 overflow-hidden 裁切） -->
+  <Teleport to="body">
+    <div v-if="showCompare" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" @click.self="showCompare = false">
+      <div class="bg-white rounded-xl shadow-2xl w-[95vw] max-w-4xl max-h-[85vh] flex flex-col overflow-hidden">
+        <div class="px-5 py-3 border-b border-gray-200 flex items-center justify-between">
+          <h3 class="text-sm font-bold text-gray-800">AI 润色对比</h3>
+          <button @click="showCompare = false" class="text-gray-400 hover:text-gray-600 text-lg leading-none">&times;</button>
+        </div>
+        <div class="flex-1 overflow-hidden grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-200">
+          <!-- 原文 -->
+          <div class="flex flex-col overflow-hidden">
+            <div class="px-4 py-2 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
+              <span class="text-xs font-medium text-gray-600">原文</span>
+              <button @click="compareEditSide = compareEditSide === 'original' ? null : 'original'"
+                class="text-xs text-blue-600 hover:underline">{{ compareEditSide === 'original' ? '预览' : '编辑' }}</button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-4">
+              <textarea v-if="compareEditSide === 'original'" v-model="originalDialog" rows="12"
+                class="w-full h-full min-h-[200px] px-3 py-2 rounded border border-gray-300 text-sm font-mono resize-y"></textarea>
+              <div v-else class="prose-content text-sm text-gray-700" v-html="renderMarkdown(originalDialog)"></div>
+            </div>
+          </div>
+          <!-- 润色后 -->
+          <div class="flex flex-col overflow-hidden">
+            <div class="px-4 py-2 bg-indigo-50 border-b border-indigo-100 flex items-center justify-between">
+              <span class="text-xs font-medium text-indigo-700">AI 润色</span>
+              <button @click="compareEditSide = compareEditSide === 'polished' ? null : 'polished'"
+                class="text-xs text-blue-600 hover:underline">{{ compareEditSide === 'polished' ? '预览' : '编辑' }}</button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-4">
+              <textarea v-if="compareEditSide === 'polished'" v-model="polishedDialog" rows="12"
+                class="w-full h-full min-h-[200px] px-3 py-2 rounded border border-gray-300 text-sm font-mono resize-y"></textarea>
+              <div v-else class="prose-content text-sm text-gray-700" v-html="renderMarkdown(polishedDialog)"></div>
+            </div>
+          </div>
+        </div>
+        <div class="px-5 py-3 border-t border-gray-200 flex justify-center gap-3">
+          <button @click="keepOriginal"
+            class="px-4 py-2 rounded-lg text-sm font-medium bg-gray-200 text-gray-700 hover:bg-gray-300">保留原文</button>
+          <button @click="keepPolished"
+            class="px-4 py-2 rounded-lg text-sm font-medium bg-indigo-500 text-white hover:bg-indigo-600">采用润色结果</button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>

@@ -60,7 +60,7 @@ const OPTIMIZE_PROMPT = `你是一个面试题排版优化专家。请将以下�
 
 要求：
 - 使用 Markdown 排版
-- 格式为 **Q：** 和 **A：** 交替，其中Q为问题，A为答案
+- 格式为 **Q**： 和 **A**： 交替，其中Q为问题，A为答案
 - 答案要专业、有条理、适当使用列表和加粗
 - 问答都中性表述，不卑不亢
 - 判断难度：初级/中级/高级
@@ -73,7 +73,7 @@ const GENERATE_PROMPT = `你是一个资深技术面试官和求职者。请根�
 
 要求：
 - 使用 Markdown 排版
-- 格式为 **Q：** 和 **A：** 交替，2-5 轮对话，其中Q为问题，A为答案
+- 格式为 **Q**： 和 **A**： 交替，2-5 轮对话，其中Q为问题，A为答案
 - 答案要专业、有条理、适当使用列表和加粗
 - 问答都中性表述，不卑不亢
 - 可以包含场景举例
@@ -86,7 +86,7 @@ const GENERATE_PROMPT = `你是一个资深技术面试官和求职者。请根�
 const POLISH_PROMPT = `你是一个面试题回答润色专家。请润色以下面试问答对话，保持原有 Q/A 交替格式不变。
 
 要求：
-- 保持 **Q：** 和 **A：** 交替格式
+- 保持 **Q**： 和 **A**： 交替格式
 - 不改变问题原意，可微调措辞使其更清晰
 - 优化答案：补充遗漏要点、改善条理性、适当使用列表和加粗
 - 问答都中性表述，不卑不亢
@@ -98,7 +98,7 @@ const POLISH_PROMPT = `你是一个面试题回答润色专家。请润色以下
 const APPEND_PROMPT = `你是一个资深技术面试官和求职者。以下是一段已有的面试问答对话，用户想在其中追加一个新的子问题。请为这个新问题生成高质量回答，并返回更新后的完整对话。
 
 要求：
-- 保持 **Q：** 和 **A：** 交替格式
+- 保持 **Q**： 和 **A**： 交替格式
 - 如果对话末尾有总结、归纳、小结性质的内容，新问答应插入到该总结之前；否则追加在对话末尾
 - 新回答要专业、有条理、适当使用列表和加粗
 - 问答都中性表述，不卑不亢
@@ -210,6 +210,31 @@ function parseResponse(data, apiFormat) {
 }
 
 /**
+ * 从 AI 返回文本中提取 JSON 对象
+ * 兼容：纯 JSON、```json 包裹、前后有多余文本等情况
+ */
+function extractJSON(content) {
+  // 1. 先尝试直接解析
+  try { return JSON.parse(content) } catch { /* continue */ }
+
+  // 2. 提取 markdown 代码块中的内容
+  const codeBlockMatch = content.match(/```(?:json)?\s*\n?([\s\S]*?)\n?\s*```/)
+  if (codeBlockMatch) {
+    try { return JSON.parse(codeBlockMatch[1]) } catch { /* continue */ }
+  }
+
+  // 3. 截取第一个 { 到最后一个 } 之间的内容
+  const firstBrace = content.indexOf('{')
+  const lastBrace = content.lastIndexOf('}')
+  if (firstBrace !== -1 && lastBrace > firstBrace) {
+    const jsonStr = content.slice(firstBrace, lastBrace + 1)
+    try { return JSON.parse(jsonStr) } catch { /* continue */ }
+  }
+
+  return null
+}
+
+/**
  * 调用 LLM 优化面试问答
  * @param {string} question - 面试问题
  * @param {string} answer - 答案要点
@@ -241,16 +266,10 @@ export async function optimizeQA(question, answer) {
   }
 
   const data = await response.json()
-  let content = parseResponse(data, provider.apiFormat)
-
-  // 清理可能的 markdown 代码块包裹
-  content = content.replace(/^```json\s*/i, '').replace(/\s*```$/, '')
-
-  try {
-    return JSON.parse(content)
-  } catch {
-    throw new Error('AI 返回格式异常，请重试')
-  }
+  const content = parseResponse(data, provider.apiFormat)
+  const result = extractJSON(content)
+  if (!result) throw new Error('AI 返回格式异常，请重试')
+  return result
 }
 
 /**
@@ -284,16 +303,10 @@ export async function generateQA(question) {
   }
 
   const data = await response.json()
-  let content = parseResponse(data, provider.apiFormat)
-
-  // 清理可能的 markdown 代码块包裹
-  content = content.replace(/^```json\s*/i, '').replace(/\s*```$/, '')
-
-  try {
-    return JSON.parse(content)
-  } catch {
-    throw new Error('AI 返回格式异常，请重试')
-  }
+  const content = parseResponse(data, provider.apiFormat)
+  const result = extractJSON(content)
+  if (!result) throw new Error('AI 返回格式异常，请重试')
+  return result
 }
 
 /**
@@ -328,15 +341,10 @@ export async function polishDialog(question, dialog) {
   }
 
   const data = await response.json()
-  let content = parseResponse(data, provider.apiFormat)
-
-  content = content.replace(/^```json\s*/i, '').replace(/\s*```$/, '')
-
-  try {
-    return JSON.parse(content)
-  } catch {
-    throw new Error('AI 返回格式异常，请重试')
-  }
+  const content = parseResponse(data, provider.apiFormat)
+  const result = extractJSON(content)
+  if (!result) throw new Error('AI 返回格式异常，请重试')
+  return result
 }
 
 /**
@@ -372,15 +380,10 @@ export async function appendSubQA(question, existingDialog, newSubQuestion) {
   }
 
   const data = await response.json()
-  let content = parseResponse(data, provider.apiFormat)
-
-  content = content.replace(/^```json\s*/i, '').replace(/\s*```$/, '')
-
-  try {
-    return JSON.parse(content)
-  } catch {
-    throw new Error('AI 返回格式异常，请重试')
-  }
+  const content = parseResponse(data, provider.apiFormat)
+  const result = extractJSON(content)
+  if (!result) throw new Error('AI 返回格式异常，请重试')
+  return result
 }
 
 /**
