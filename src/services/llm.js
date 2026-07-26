@@ -68,6 +68,19 @@ const OPTIMIZE_PROMPT = `你是一个面试题排版优化专家。请将以下�
 
 只返回 JSON，不要其他内容。`
 
+const GENERATE_PROMPT = `你是一个资深技术面试官和求职者。请根据给定的面试问题，生成一段完整的高质量"面试官-求职者"对话。
+
+要求：
+- 使用 Markdown 排版
+- 格式为 **面试官：** 和 **求职者：** 交替，2-3 轮对话
+- 答案要专业、有条理、适当使用列表和加粗
+- 包含实际项目经验或场景举例
+- 判断难度：初级/中级/高级
+- 返回严格 JSON（不要包含 markdown 代码块标记）：
+  { "optimized_question": "优化后的问题标题", "dialog": "对话内容", "difficulty": "初级|中级|高级" }
+
+只返回 JSON，不要其他内容。`
+
 /**
  * 获取多提供商配置
  * 返回 { providers: [...], activeId: string }
@@ -186,6 +199,49 @@ export async function optimizeQA(question, answer) {
   } else {
     req = buildOpenAIRequest(provider, [
       { role: 'system', content: OPTIMIZE_PROMPT },
+      { role: 'user', content: userContent },
+    ])
+  }
+
+  const response = await fetch(req.url, {
+    method: 'POST',
+    headers: req.headers,
+    body: JSON.stringify(req.body),
+  })
+
+  if (!response.ok) {
+    const errText = await response.text().catch(() => '')
+    throw new Error(`API 请求失败 (${response.status}): ${errText || '未知错误'}`)
+  }
+
+  const data = await response.json()
+  let content = parseResponse(data, provider.apiFormat)
+
+  // 清理可能的 markdown 代码块包裹
+  content = content.replace(/^```json\s*/i, '').replace(/\s*```$/, '')
+
+  try {
+    return JSON.parse(content)
+  } catch {
+    throw new Error('AI 返回格式异常，请重试')
+  }
+}
+
+/**
+ * 调用 LLM 根据问题自动生成完整对话
+ * @param {string} question - 面试问题
+ * @returns {Promise<{optimized_question, dialog, difficulty}>}
+ */
+export async function generateQA(question) {
+  const provider = await getActiveProvider()
+  const userContent = `【问题】${question}`
+
+  let req
+  if (provider.apiFormat === 'anthropic') {
+    req = buildAnthropicRequest(provider, GENERATE_PROMPT, userContent)
+  } else {
+    req = buildOpenAIRequest(provider, [
+      { role: 'system', content: GENERATE_PROMPT },
       { role: 'user', content: userContent },
     ])
   }

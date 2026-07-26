@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useQuestionBank } from '../stores/useQuestionBank.js'
-import { optimizeQA } from '../services/llm.js'
+import { optimizeQA, generateQA } from '../services/llm.js'
 import { renderMarkdown } from '../utils/markdown.js'
 
 const { categories, addQuestion, load, saveCategories } = useQuestionBank()
@@ -22,6 +22,11 @@ const previewQuestion = ref('')
 const previewDifficulty = ref('')
 
 const canSubmit = computed(() =>
+  question.value.trim() &&
+  selectedCategory.value && selectedCategory.value !== '__new__'
+)
+
+const canManualSave = computed(() =>
   question.value.trim() && answer.value.trim() &&
   selectedCategory.value && selectedCategory.value !== '__new__'
 )
@@ -53,15 +58,20 @@ async function handleOptimize() {
   preview.value = null
 
   if (!question.value.trim()) { error.value = '请输入面试问题'; return }
-  if (!answer.value.trim()) { error.value = '请输入答案内容'; return }
   if (!selectedCategory.value || selectedCategory.value === '__new__') { error.value = '请选择分类'; return }
 
   loading.value = true
   step.value = '正在连接 AI 服务...'
 
   try {
-    step.value = 'AI 正在优化问答格式...'
-    const result = await optimizeQA(question.value.trim(), answer.value.trim())
+    let result
+    if (answer.value.trim()) {
+      step.value = 'AI 正在优化问答格式...'
+      result = await optimizeQA(question.value.trim(), answer.value.trim())
+    } else {
+      step.value = 'AI 正在生成回答...'
+      result = await generateQA(question.value.trim())
+    }
 
     preview.value = result
     previewQuestion.value = result.optimized_question || question.value
@@ -116,7 +126,7 @@ function cancelPreview() {
   <div class="max-w-2xl mx-auto">
     <h2 class="text-xl font-bold text-gray-800 mb-2">创建问答</h2>
     <p class="text-sm text-gray-500 mb-6">
-      输入面试问题和答案要点，AI 会自动优化为对话格式。也可以跳过 AI 直接手动保存。
+      输入面试问题，可选 AI 生成对话格式答案；也可输入答案让 AI 优化格式，或者直接手动保存。
     </p>
 
     <!-- 错误提示 -->
@@ -182,7 +192,7 @@ function cancelPreview() {
         <textarea
           v-model="answer"
           rows="8"
-          placeholder="输入答案要点，可以是粗糙的笔记。AI 会优化为面试官-求职者对话格式。"
+          placeholder="可选。输入答案要点让 AI 优化格式；留空则由 AI 自动生成完整回答。"
           class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition resize-y"
         ></textarea>
         <p class="text-xs text-gray-400 mt-1 text-right">{{ answer.length }} 字</p>
@@ -220,14 +230,14 @@ function cancelPreview() {
           class="flex-1 py-3 px-4 rounded-lg font-medium text-white transition-colors"
           :class="loading || !canSubmit ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600'"
         >
-          {{ loading ? step : 'AI 优化' }}
+          {{ loading ? step : (answer.trim() ? 'AI 优化' : 'AI 生成回答') }}
         </button>
         <button
           type="button"
           @click="handleManualSave"
-          :disabled="!canSubmit"
+          :disabled="!canManualSave"
           class="px-4 py-3 rounded-lg font-medium transition-colors"
-          :class="!canSubmit ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'"
+          :class="!canManualSave ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'"
         >
           跳过 AI，直接保存
         </button>
