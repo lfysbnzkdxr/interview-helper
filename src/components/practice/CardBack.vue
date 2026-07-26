@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch, nextTick } from 'vue'
 import { renderMarkdown } from '../../utils/markdown.js'
 
 const props = defineProps({
@@ -12,6 +12,16 @@ const props = defineProps({
 defineEmits(['flip'])
 
 const renderedDialog = computed(() => renderMarkdown(props.question.dialog))
+
+const scrollContainer = ref(null)
+
+watch(() => props.question, () => {
+  nextTick(() => {
+    if (scrollContainer.value) {
+      scrollContainer.value.scrollTop = 0
+    }
+  })
+})
 </script>
 
 <template>
@@ -28,7 +38,7 @@ const renderedDialog = computed(() => renderMarkdown(props.question.dialog))
     </div>
 
     <!-- 对话内容（内部滚动） -->
-    <div class="flex-1 overflow-y-auto rounded-lg bg-gray-50 p-4 prose-content">
+    <div ref="scrollContainer" class="flex-1 overflow-y-auto rounded-lg bg-gray-50 p-4 prose-content">
       <div v-html="renderedDialog"></div>
     </div>
   </div>
