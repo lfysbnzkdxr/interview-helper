@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useQuestionBank } from '../stores/useQuestionBank.js'
 import { renderMarkdown } from '../utils/markdown.js'
 import { getDifficultyColor } from '../utils/helpers.js'
+import { polishDialog, appendSubQA } from '../services/llm.js'
 
 const { questions, categories, loading, load, deleteQuestion, deleteQuestions, toggleHidden, setHidden, updateQuestion, saveCategories } = useQuestionBank()
 
@@ -16,6 +17,12 @@ const editForm = ref({ question: '', dialog: '', difficulty: '', category: '' })
 const batchCategory = ref('')
 const showBatchNewCategory = ref(false)
 const batchNewCategoryName = ref('')
+
+// AI 润色/子问题
+const aiLoading = ref(false)
+const aiError = ref('')
+const showSubQuestion = ref(false)
+const subQuestionText = ref('')
 
 // 分类排序：「未分类」始终排在最后
 const sortedCategories = computed(() => {
@@ -150,6 +157,42 @@ function startEdit(item) {
   editId.value = item.id
   editForm.value = { question: item.question, dialog: item.dialog, difficulty: item.difficulty, category: cat }
   expandedId.value = null
+  aiError.value = ''
+  showSubQuestion.value = false
+  subQuestionText.value = ''
+}
+
+async function handleAiPolish() {
+  if (!editForm.value.dialog.trim()) { aiError.value = '对话内容为空，无法润色'; return }
+  aiError.value = ''
+  aiLoading.value = true
+  try {
+    const result = await polishDialog(editForm.value.question, editForm.value.dialog)
+    editForm.value.dialog = result.dialog || editForm.value.dialog
+    if (result.difficulty) editForm.value.difficulty = result.difficulty
+  } catch (e) {
+    aiError.value = e.message
+  } finally {
+    aiLoading.value = false
+  }
+}
+
+async function handleAppendSub() {
+  const sub = subQuestionText.value.trim()
+  if (!sub) return
+  aiError.value = ''
+  aiLoading.value = true
+  try {
+    const result = await appendSubQA(editForm.value.question, editForm.value.dialog, sub)
+    editForm.value.dialog = result.dialog || editForm.value.dialog
+    if (result.difficulty) editForm.value.difficulty = result.difficulty
+    subQuestionText.value = ''
+    showSubQuestion.value = false
+  } catch (e) {
+    aiError.value = e.message
+  } finally {
+    aiLoading.value = false
+  }
 }
 
 async function saveEdit() {
@@ -251,6 +294,29 @@ function cancelEdit() {
             <option>初级</option><option>中级</option><option>高级</option>
           </select>
           <textarea v-model="editForm.dialog" rows="8" class="w-full px-3 py-2 rounded border border-gray-300 text-sm font-mono resize-y"></textarea>
+          <!-- AI 操作 -->
+          <div class="space-y-2 pt-2 border-t border-gray-100">
+            <div v-if="aiError" class="text-xs text-red-600">{{ aiError }}</div>
+            <div class="flex gap-2 items-center flex-wrap">
+              <button @click="handleAiPolish" :disabled="aiLoading"
+                class="px-3 py-1.5 rounded text-xs font-medium bg-indigo-500 text-white hover:bg-indigo-600 disabled:opacity-50">
+                {{ aiLoading ? 'AI 处理中...' : 'AI 润色对话' }}
+              </button>
+              <button @click="showSubQuestion = !showSubQuestion" :disabled="aiLoading"
+                class="px-3 py-1.5 rounded text-xs font-medium bg-teal-500 text-white hover:bg-teal-600 disabled:opacity-50">
+                + 新增子问题
+              </button>
+            </div>
+            <div v-if="showSubQuestion" class="flex gap-2">
+              <input v-model="subQuestionText" @keyup.enter="handleAppendSub"
+                placeholder="输入子问题，AI 将生成回答追加到对话末尾"
+                class="flex-1 px-3 py-2 rounded border border-gray-300 text-sm" />
+              <button @click="handleAppendSub" :disabled="aiLoading || !subQuestionText.trim()"
+                class="px-3 py-1.5 rounded text-xs font-medium bg-teal-500 text-white hover:bg-teal-600 disabled:opacity-50">
+                生成回答
+              </button>
+            </div>
+          </div>
           <div class="flex gap-2">
             <button @click="saveEdit" class="px-3 py-1.5 rounded text-xs font-medium bg-green-500 text-white hover:bg-green-600">保存</button>
             <button @click="cancelEdit" class="px-3 py-1.5 rounded text-xs font-medium bg-gray-200 text-gray-600 hover:bg-gray-300">取消</button>

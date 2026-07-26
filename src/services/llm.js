@@ -83,6 +83,30 @@ const GENERATE_PROMPT = `你是一个资深技术面试官和求职者。请根�
 
 只返回 JSON，不要其他内容。`
 
+const POLISH_PROMPT = `你是一个面试题回答润色专家。请润色以下面试问答对话，保持原有 Q/A 交替格式不变。
+
+要求：
+- 保持 **Q：** 和 **A：** 交替格式
+- 不改变问题原意，可微调措辞使其更清晰
+- 优化答案：补充遗漏要点、改善条理性、适当使用列表和加粗
+- 问答都中性表述，不卑不亢
+- 返回严格 JSON（不要包含 markdown 代码块标记）：
+  { "optimized_question": "问题标题", "dialog": "润色后的对话内容", "difficulty": "初级|中级|高级" }
+
+只返回 JSON，不要其他内容。`
+
+const APPEND_PROMPT = `你是一个资深技术面试官和求职者。以下是一段已有的面试问答对话，用户想在其中追加一个新的子问题。请为这个新问题生成高质量回答，并返回更新后的完整对话。
+
+要求：
+- 保持 **Q：** 和 **A：** 交替格式
+- 如果对话末尾有总结、归纳、小结性质的内容，新问答应插入到该总结之前；否则追加在对话末尾
+- 新回答要专业、有条理、适当使用列表和加粗
+- 问答都中性表述，不卑不亢
+- 返回严格 JSON（不要包含 markdown 代码块标记）：
+  { "optimized_question": "问题标题", "dialog": "更新后的完整对话", "difficulty": "初级|中级|高级" }
+
+只返回 JSON，不要其他内容。`
+
 /**
  * 获取多提供商配置
  * 返回 { providers: [...], activeId: string }
@@ -263,6 +287,93 @@ export async function generateQA(question) {
   let content = parseResponse(data, provider.apiFormat)
 
   // 清理可能的 markdown 代码块包裹
+  content = content.replace(/^```json\s*/i, '').replace(/\s*```$/, '')
+
+  try {
+    return JSON.parse(content)
+  } catch {
+    throw new Error('AI 返回格式异常，请重试')
+  }
+}
+
+/**
+ * 调用 LLM 润色现有对话
+ * @param {string} question - 问题标题
+ * @param {string} dialog - 现有对话内容
+ * @returns {Promise<{optimized_question, dialog, difficulty}>}
+ */
+export async function polishDialog(question, dialog) {
+  const provider = await getActiveProvider()
+  const userContent = `【问题】${question}\n【现有对话】${dialog}`
+
+  let req
+  if (provider.apiFormat === 'anthropic') {
+    req = buildAnthropicRequest(provider, POLISH_PROMPT, userContent)
+  } else {
+    req = buildOpenAIRequest(provider, [
+      { role: 'system', content: POLISH_PROMPT },
+      { role: 'user', content: userContent },
+    ])
+  }
+
+  const response = await fetch(req.url, {
+    method: 'POST',
+    headers: req.headers,
+    body: JSON.stringify(req.body),
+  })
+
+  if (!response.ok) {
+    const errText = await response.text().catch(() => '')
+    throw new Error(`API 请求失败 (${response.status}): ${errText || '未知错误'}`)
+  }
+
+  const data = await response.json()
+  let content = parseResponse(data, provider.apiFormat)
+
+  content = content.replace(/^```json\s*/i, '').replace(/\s*```$/, '')
+
+  try {
+    return JSON.parse(content)
+  } catch {
+    throw new Error('AI 返回格式异常，请重试')
+  }
+}
+
+/**
+ * 调用 LLM 为新增子问题生成回答并追加到对话
+ * @param {string} question - 主题问题
+ * @param {string} existingDialog - 现有对话内容
+ * @param {string} newSubQuestion - 新增子问题
+ * @returns {Promise<{optimized_question, dialog, difficulty}>}
+ */
+export async function appendSubQA(question, existingDialog, newSubQuestion) {
+  const provider = await getActiveProvider()
+  const userContent = `【主题】${question}\n【现有对话】${existingDialog}\n【新增子问题】${newSubQuestion}`
+
+  let req
+  if (provider.apiFormat === 'anthropic') {
+    req = buildAnthropicRequest(provider, APPEND_PROMPT, userContent)
+  } else {
+    req = buildOpenAIRequest(provider, [
+      { role: 'system', content: APPEND_PROMPT },
+      { role: 'user', content: userContent },
+    ])
+  }
+
+  const response = await fetch(req.url, {
+    method: 'POST',
+    headers: req.headers,
+    body: JSON.stringify(req.body),
+  })
+
+  if (!response.ok) {
+    const errText = await response.text().catch(() => '')
+    throw new Error(`API 请求失败 (${response.status}): ${errText || '未知错误'}`)
+  }
+
+  const data = await response.json()
+  let content = parseResponse(data, provider.apiFormat)
+
   content = content.replace(/^```json\s*/i, '').replace(/\s*```$/, '')
 
   try {
