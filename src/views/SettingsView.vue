@@ -3,8 +3,9 @@ import { ref, computed, onMounted } from 'vue'
 import { useQuestionBank } from '../stores/useQuestionBank.js'
 import { testConnection, PROVIDER_PRESETS } from '../services/llm.js'
 import { parseSyncCodeFromHash } from '../services/cloud-sync.js'
+import { renderMarkdown } from '../utils/markdown.js'
 
-const { questions, load, getApiConfig, saveApiConfig, getCategories, saveCategories, updateQuestion, exportData, importData, resetToDefault, createMigration, previewCloudData, restoreFromCloud } = useQuestionBank()
+const { questions, load, getApiConfig, saveApiConfig, getCategories, saveCategories, updateQuestion, exportData, importData, resetToDefault, createMigration, previewCloudData, restoreFromCloud, detectMergeConflicts, applyMergeDecisions } = useQuestionBank()
 
 const apiConfig = ref({ providers: [], activeId: '' })
 const cats = ref([])
@@ -27,6 +28,13 @@ const previewData = ref(null) // { preview, _raw }
 const previewLoading = ref(false)
 const codeCopied = ref(false)
 const linkCopied = ref(false)
+
+// 合并冲突解决相关状态
+const mergeConflicts = ref([])   // [{ local, cloud }]
+const mergeNewQuestions = ref([]) // 无冲突新题
+const conflictDecisions = ref([]) // ['local'|'cloud'|'both']
+const expandedConflict = ref(null) // 展开查看答案的索引
+const mergeApplying = ref(false)
 
 onMounted(async () => {
   await load()
@@ -291,23 +299,87 @@ async function handlePreview() {
 
 async function handleRestore(mode) {
   if (!previewData.value?._raw) return
-  downloading.value = true
-  try {
-    const result = await restoreFromCloud(previewData.value._raw, mode)
-    if (result.success) {
-      message.value = mode === 'overwrite' ? '✅ 已覆盖恢复成功' : '✅ 已合并恢复成功'
+
+  if (mode === 'overwrite') {
+    downloading.value = true
+    try {
+      const result = await restoreFromCloud(previewData.value._raw, 'overwrite')
+      if (result.success) {
+        message.value = '✅ 已覆盖恢复成功'
+        cats.value = await getCategories()
+        previewData.value = null
+        downloadCode.value = ''
+      } else {
+        message.value = '恢复失败: ' + result.error
+      }
+    } catch (e) {
+      message.value = '恢复失败: ' + e.message
+    } finally {
+      downloading.value = false
+      setTimeout(() => { message.value = '' }, 4000)
+    }
+    return
+  }
+
+  // 合并模式：先检测冲突
+  const { conflicts, newQuestions } = detectMergeConflicts(previewData.value._raw)
+  if (conflicts.length === 0) {
+    // 无冲突，直接合并
+    downloading.value = true
+    try {
+      await applyMergeDecisions([], newQuestions, previewData.value._raw.categories)
+      message.value = `✅ 合并成功，新增 ${newQuestions.length} 道题目`
       cats.value = await getCategories()
       previewData.value = null
       downloadCode.value = ''
-    } else {
-      message.value = '恢复失败: ' + result.error
+    } catch (e) {
+      message.value = '合并失败: ' + e.message
+    } finally {
+      downloading.value = false
+      setTimeout(() => { message.value = '' }, 4000)
     }
-  } catch (e) {
-    message.value = '恢复失败: ' + e.message
-  } finally {
-    downloading.value = false
-    setTimeout(() => { message.value = '' }, 4000)
+  } else {
+    // 有冲突，进入冲突解决流程
+    mergeConflicts.value = conflicts
+    mergeNewQuestions.value = newQuestions
+    conflictDecisions.value = conflicts.map(() => 'local')
+    expandedConflict.value = null
   }
+}
+
+function setAllDecisions(choice) {
+  conflictDecisions.value = conflictDecisions.value.map(() => choice)
+}
+
+async function applyMerge() {
+  mergeApplying.value = true
+  try {
+    const decisions = mergeConflicts.value.map((conflict, i) => ({
+      conflict,
+      choice: conflictDecisions.value[i],
+    }))
+    await applyMergeDecisions(decisions, mergeNewQuestions.value, previewData.value?._raw?.categories)
+    const cloudCount = mergeNewQuestions.value.length
+    const bothCount = conflictDecisions.value.filter(d => d === 'both').length
+    message.value = `✅ 合并完成：新增 ${cloudCount + bothCount} 道，保留本地 ${conflictDecisions.value.filter(d => d === 'local').length} 道，更新 ${conflictDecisions.value.filter(d => d === 'cloud').length} 道`
+    cats.value = await getCategories()
+    previewData.value = null
+    downloadCode.value = ''
+    mergeConflicts.value = []
+    mergeNewQuestions.value = []
+  } catch (e) {
+    message.value = '合并失败: ' + e.message
+  } finally {
+    mergeApplying.value = false
+    setTimeout(() => { message.value = '' }, 5000)
+  }
+}
+
+function cancelMerge() {
+  mergeConflicts.value = []
+  mergeNewQuestions.value = []
+  conflictDecisions.value = []
+  expandedConflict.value = null
 }
 
 function formatExpiry(ttl) {
@@ -531,6 +603,64 @@ function formatExpiry(ttl) {
             <button @click="previewData = null" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-600 hover:bg-gray-200">
               取消
             </button>
+          </div>
+        </div>
+
+        <!-- 合并冲突解决 -->
+        <div v-if="mergeConflicts.length > 0" class="mt-4 p-4 rounded-lg bg-amber-50 border border-amber-200">
+          <div class="flex items-center justify-between mb-3">
+            <p class="text-sm font-medium text-amber-800">⚠️ 发现 {{ mergeConflicts.length }} 道重复题目（问题相同但答案可能不同）</p>
+          </div>
+          <p class="text-xs text-amber-600 mb-3">另有 {{ mergeNewQuestions.length }} 道新题目将直接导入。请逐条决定重复题目的处理方式：</p>
+
+          <!-- 批量操作 -->
+          <div class="flex flex-wrap gap-2 mb-4">
+            <button @click="setAllDecisions('local')" class="px-2.5 py-1 rounded text-xs font-medium bg-gray-100 text-gray-600 hover:bg-gray-200">全部保留本地</button>
+            <button @click="setAllDecisions('cloud')" class="px-2.5 py-1 rounded text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200">全部用云端</button>
+            <button @click="setAllDecisions('both')" class="px-2.5 py-1 rounded text-xs font-medium bg-green-100 text-green-700 hover:bg-green-200">全部保留</button>
+          </div>
+
+          <!-- 冲突列表 -->
+          <div class="space-y-3 max-h-[400px] overflow-y-auto">
+            <div v-for="(item, idx) in mergeConflicts" :key="idx" class="p-3 rounded-lg bg-white border border-amber-200">
+              <p class="text-sm font-medium text-gray-800 mb-2">{{ item.local.question }}</p>
+
+              <!-- 展开对比答案 -->
+              <button @click="expandedConflict = expandedConflict === idx ? null : idx" class="text-xs text-blue-600 hover:underline mb-2">
+                {{ expandedConflict === idx ? '收起答案对比' : '查看两边答案对比' }}
+              </button>
+              <div v-if="expandedConflict === idx" class="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
+                <div class="p-2 rounded border border-gray-200 bg-gray-50">
+                  <p class="text-xs font-medium text-gray-500 mb-1">📱 本地版本</p>
+                  <div class="text-xs text-gray-700 prose-content max-h-[200px] overflow-y-auto" v-html="renderMarkdown(item.local.dialog)"></div>
+                </div>
+                <div class="p-2 rounded border border-blue-200 bg-blue-50/50">
+                  <p class="text-xs font-medium text-blue-500 mb-1">☁️ 云端版本</p>
+                  <div class="text-xs text-gray-700 prose-content max-h-[200px] overflow-y-auto" v-html="renderMarkdown(item.cloud.dialog)"></div>
+                </div>
+              </div>
+
+              <!-- 单条决策 -->
+              <div class="flex flex-wrap gap-2">
+                <label class="flex items-center gap-1 text-xs cursor-pointer" :class="conflictDecisions[idx] === 'local' ? 'text-gray-800 font-medium' : 'text-gray-500'">
+                  <input type="radio" :value="'local'" v-model="conflictDecisions[idx]" class="w-3 h-3" /> 保留本地
+                </label>
+                <label class="flex items-center gap-1 text-xs cursor-pointer" :class="conflictDecisions[idx] === 'cloud' ? 'text-blue-700 font-medium' : 'text-gray-500'">
+                  <input type="radio" :value="'cloud'" v-model="conflictDecisions[idx]" class="w-3 h-3" /> 用云端
+                </label>
+                <label class="flex items-center gap-1 text-xs cursor-pointer" :class="conflictDecisions[idx] === 'both' ? 'text-green-700 font-medium' : 'text-gray-500'">
+                  <input type="radio" :value="'both'" v-model="conflictDecisions[idx]" class="w-3 h-3" /> 都保留
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- 确认按钮 -->
+          <div class="flex gap-2 mt-4">
+            <button @click="applyMerge" :disabled="mergeApplying" class="px-4 py-2 rounded-lg text-sm font-medium bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50">
+              {{ mergeApplying ? '合并中...' : '确认合并' }}
+            </button>
+            <button @click="cancelMerge" class="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200">取消</button>
           </div>
         </div>
       </div>

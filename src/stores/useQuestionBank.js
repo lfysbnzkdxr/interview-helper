@@ -256,6 +256,74 @@ export function useQuestionBank() {
     }
   }
 
+  /**
+   * 检测合并冲突：按题目文本比对本地与云端
+   * @param {object} cloudData - { questions, categories }
+   * @returns {{ conflicts: Array, newQuestions: Array }}
+   *   conflicts: [{ local, cloud }] 题目文本相同但 id 不同
+   *   newQuestions: 本地不存在的题目（可直接导入）
+   */
+  function detectMergeConflicts(cloudData) {
+    const localTexts = new Map(questions.value.map(q => [q.question.trim(), q]))
+    const conflicts = []
+    const newQuestions = []
+
+    for (const cq of (cloudData.questions || [])) {
+      const localQ = localTexts.get(cq.question.trim())
+      if (localQ && localQ.id !== cq.id) {
+        // 同一题目文本、不同 id → 冲突
+        conflicts.push({ local: localQ, cloud: cq })
+      } else if (!localQ) {
+        // 本地不存在 → 新题目
+        newQuestions.push(cq)
+      }
+      // id 相同 → 已存在，跳过
+    }
+    return { conflicts, newQuestions }
+  }
+
+  /**
+   * 应用合并决策
+   * @param {Array} decisions - [{ conflict, choice: 'local'|'cloud'|'both' }]
+   * @param {Array} newQuestions - 无冲突的新题目
+   * @param {Array} cloudCategories - 云端分类列表
+   */
+  async function applyMergeDecisions(decisions, newQuestions, cloudCategories) {
+    const db = await getDB()
+    const tx = db.transaction('questions', 'readwrite')
+
+    // 导入无冲突的新题目
+    for (const q of newQuestions) {
+      await tx.store.put(q)
+    }
+
+    // 处理冲突决策
+    for (const { conflict, choice } of decisions) {
+      if (choice === 'cloud') {
+        // 用云端版本替换本地（保留本地 id 以避免引用断裂）
+        const updated = { ...conflict.local, dialog: conflict.cloud.dialog, difficulty: conflict.cloud.difficulty, category: conflict.cloud.category, updatedAt: Date.now() }
+        await tx.store.put(updated)
+      } else if (choice === 'both') {
+        // 都保留：云端版本作为新题目插入（新 id）
+        const newQ = { ...conflict.cloud, id: generateId(), createdAt: Date.now(), updatedAt: Date.now() }
+        await tx.store.put(newQ)
+      }
+      // 'local' → 不做任何操作
+    }
+    await tx.done
+
+    // 合并分类（云端新分类追加到本地）
+    if (cloudCategories && cloudCategories.length) {
+      const merged = [...categories.value]
+      for (const c of cloudCategories) {
+        if (!merged.includes(c)) merged.push(c)
+      }
+      await saveCategories(merged)
+    }
+
+    await reload()
+  }
+
   return {
     questions: visibleQuestions,
     categories,
@@ -279,5 +347,7 @@ export function useQuestionBank() {
     createMigration,
     previewCloudData,
     restoreFromCloud,
+    detectMergeConflicts,
+    applyMergeDecisions,
   }
 }
