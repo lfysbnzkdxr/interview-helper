@@ -4,7 +4,7 @@ import { useQuestionBank } from '../stores/useQuestionBank.js'
 import { renderMarkdown } from '../utils/markdown.js'
 import { getDifficultyColor } from '../utils/helpers.js'
 
-const { questions, categories, loading, load, deleteQuestion, deleteQuestions, toggleHidden, updateQuestion } = useQuestionBank()
+const { questions, categories, loading, load, deleteQuestion, deleteQuestions, toggleHidden, updateQuestion, saveCategories } = useQuestionBank()
 
 const searchQuery = ref('')
 const filterCategory = ref('')
@@ -14,6 +14,8 @@ const selectedIds = ref([])
 const editId = ref(null)
 const editForm = ref({ question: '', dialog: '', difficulty: '', category: '' })
 const batchCategory = ref('')
+const showBatchNewCategory = ref(false)
+const batchNewCategoryName = ref('')
 
 // 分类排序：「未分类」始终排在最后
 const sortedCategories = computed(() => {
@@ -82,6 +84,34 @@ async function handleBatchDelete() {
   selectedIds.value = []
 }
 
+function onBatchCategoryChange(cat) {
+  if (cat === '__new__') {
+    showBatchNewCategory.value = true
+    batchCategory.value = ''
+    return
+  }
+  handleBatchMove(cat)
+}
+
+async function confirmBatchNewCategory() {
+  const name = batchNewCategoryName.value.trim()
+  if (!name) return
+  if (!categories.value.includes(name)) {
+    const cats = categories.value.filter(c => c !== '未分类')
+    cats.push(name)
+    if (categories.value.includes('未分类')) cats.push('未分类')
+    await saveCategories(cats)
+  }
+  showBatchNewCategory.value = false
+  batchNewCategoryName.value = ''
+  await handleBatchMove(name)
+}
+
+function cancelBatchNewCategory() {
+  showBatchNewCategory.value = false
+  batchNewCategoryName.value = ''
+}
+
 async function handleBatchMove(cat) {
   if (!cat) return
   if (!confirm(`确定将选中的 ${selectedIds.value.length} 道题移动到「${cat}」吗？`)) {
@@ -148,10 +178,22 @@ function cancelEdit() {
     <!-- 批量操作 -->
     <div v-if="selectedIds.length > 0" class="flex items-center gap-3 mb-3 p-2 bg-yellow-50 rounded-lg border border-yellow-200 flex-wrap">
       <span class="text-sm text-yellow-700">已选 {{ selectedIds.length }} 题</span>
-      <select v-model="batchCategory" @change="handleBatchMove(batchCategory)" class="px-2 py-1 rounded text-xs border border-gray-300 bg-white">
+      <select v-model="batchCategory" @change="onBatchCategoryChange(batchCategory)" class="px-2 py-1 rounded text-xs border border-gray-300 bg-white">
         <option value="" disabled>移动到分类...</option>
         <option v-for="cat in sortedCategories" :key="cat" :value="cat">{{ cat }}</option>
+        <option value="__new__">+ 新建分类...</option>
       </select>
+      <div v-if="showBatchNewCategory" class="flex items-center gap-1">
+        <input
+          v-model="batchNewCategoryName"
+          @keyup.enter="confirmBatchNewCategory"
+          placeholder="新分类名称"
+          class="px-2 py-1 rounded text-xs border border-gray-300 w-28"
+          autofocus
+        />
+        <button @click="confirmBatchNewCategory" class="px-2 py-1 rounded text-xs font-medium bg-blue-500 text-white hover:bg-blue-600">确定</button>
+        <button @click="cancelBatchNewCategory" class="px-2 py-1 rounded text-xs font-medium bg-gray-200 text-gray-600 hover:bg-gray-300">取消</button>
+      </div>
       <button @click="handleBatchDelete" class="px-3 py-1 rounded text-xs font-medium bg-red-500 text-white hover:bg-red-600">批量删除</button>
       <button @click="selectedIds = []" class="px-3 py-1 rounded text-xs font-medium bg-gray-200 text-gray-600 hover:bg-gray-300">取消选择</button>
     </div>
