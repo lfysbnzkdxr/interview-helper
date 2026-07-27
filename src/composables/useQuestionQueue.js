@@ -14,11 +14,12 @@ function shuffle(arr) {
 }
 
 export function useQuestionQueue() {
-  const { questions: storeQuestions, loading: storeLoading, load } = useQuestionBank()
+  const { questions: storeQuestions, loading: storeLoading, load, categories } = useQuestionBank()
 
   const queue = ref([])
   const currentIndex = ref(0)
   const difficulty = ref('全部')
+  const category = ref('全部')
   const isFlipped = ref(false)
 
   const currentQuestion = computed(() => queue.value[currentIndex.value] || null)
@@ -26,15 +27,17 @@ export function useQuestionQueue() {
   const isLast = computed(() => currentIndex.value === queue.value.length - 1)
   const progress = computed(() => `${currentIndex.value + 1} / ${queue.value.length}`)
 
-  function getPool(diff) {
-    const visible = storeQuestions.value.filter(q => !q.hidden)
-    if (diff === '全部') return visible
-    return visible.filter(q => q.difficulty === diff)
+  function getPool(diff, cat) {
+    let visible = storeQuestions.value.filter(q => !q.hidden)
+    if (diff && diff !== '全部') visible = visible.filter(q => q.difficulty === diff)
+    if (cat && cat !== '全部') visible = visible.filter(q => q.category === cat)
+    return visible
   }
 
-  function initQueue(diff) {
+  function initQueue(diff, cat) {
     difficulty.value = diff || '全部'
-    const pool = getPool(difficulty.value)
+    category.value = cat || '全部'
+    const pool = getPool(difficulty.value, category.value)
     const queueSize = Math.min(20, pool.length)
     queue.value = shuffle(pool).slice(0, queueSize)
     currentIndex.value = 0
@@ -42,7 +45,7 @@ export function useQuestionQueue() {
   }
 
   function refillQueue() {
-    const pool = getPool(difficulty.value)
+    const pool = getPool(difficulty.value, category.value)
     const existingIds = new Set(queue.value.map(q => q.id))
     let newItems = shuffle(pool).filter(q => !existingIds.has(q.id))
 
@@ -75,13 +78,17 @@ export function useQuestionQueue() {
   }
 
   function setDifficulty(diff) {
-    initQueue(diff)
+    initQueue(diff, category.value)
+  }
+
+  function setCategory(cat) {
+    initQueue(difficulty.value, cat)
   }
 
   // 异步加载数据（使用共享缓存，首次加载后复用）
   async function loadData() {
     await load()
-    initQueue(difficulty.value)
+    initQueue(difficulty.value, category.value)
   }
 
   loadData()
@@ -90,6 +97,8 @@ export function useQuestionQueue() {
     queue,
     currentIndex,
     difficulty,
+    category,
+    categories,
     isFlipped,
     loading: storeLoading,
     currentQuestion,
@@ -100,5 +109,6 @@ export function useQuestionQueue() {
     prev,
     flip,
     setDifficulty,
+    setCategory,
   }
 }

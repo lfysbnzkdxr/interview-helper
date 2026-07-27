@@ -325,7 +325,8 @@ function cancelEdit() {
             <div v-if="aiError" class="text-xs text-red-600">{{ aiError }}</div>
             <div class="flex gap-2 items-center flex-wrap">
               <button @click="handleAiPolish" :disabled="aiLoading"
-                class="px-3 py-1.5 rounded text-xs font-medium bg-indigo-500 text-white hover:bg-indigo-600 disabled:opacity-50">
+                class="px-3 py-1.5 rounded text-xs font-medium bg-indigo-500 text-white hover:bg-indigo-600 disabled:opacity-50 inline-flex items-center gap-1.5">
+                <span v-if="aiLoading" class="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
                 {{ aiLoading ? 'AI 处理中...' : 'AI 润色对话' }}
               </button>
               <button @click="showSubQuestion = !showSubQuestion" :disabled="aiLoading"
@@ -338,7 +339,8 @@ function cancelEdit() {
                 placeholder="输入子问题，AI 将生成回答"
                 class="flex-1 px-3 py-2 rounded border border-gray-300 text-sm" />
               <button @click="handleAppendSub" :disabled="aiLoading || !subQuestionText.trim()"
-                class="px-3 py-1.5 rounded text-xs font-medium bg-teal-500 text-white hover:bg-teal-600 disabled:opacity-50">
+                class="px-3 py-1.5 rounded text-xs font-medium bg-teal-500 text-white hover:bg-teal-600 disabled:opacity-50 inline-flex items-center gap-1.5">
+                <span v-if="aiLoading" class="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
                 生成回答
               </button>
             </div>
