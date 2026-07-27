@@ -10,27 +10,29 @@ const { loadError, reload } = useQuestionBank()
 </script>
 
 <template>
-  <div class="max-w-2xl mx-auto space-y-8">
-    <h2 class="text-xl font-bold text-gray-800">设置</h2>
-    <ApiConfigSection />
-    <CategorySection />
-    <DataSection />
-    <CloudSyncSection />
-  </div>
+  <div>
+    <div class="max-w-2xl mx-auto space-y-8">
+      <h2 class="text-xl font-bold text-gray-800">设置</h2>
+      <ApiConfigSection />
+      <CategorySection />
+      <DataSection />
+      <CloudSyncSection />
+    </div>
 
-  <!-- 加载错误弹窗 -->
-  <Teleport to="body">
-    <div v-if="loadError" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" @click.self="reload">
-      <div class="bg-white rounded-xl shadow-2xl w-[90vw] max-w-sm p-6">
-        <h3 class="text-base font-bold text-gray-800 mb-2">数据加载失败</h3>
-        <p class="text-sm text-gray-600 mb-6">{{ loadError }}</p>
-        <div class="flex justify-end">
-          <button @click="reload" class="px-4 py-2 rounded-lg text-sm font-medium bg-blue-500 text-white hover:bg-blue-600">重试</button>
+    <!-- 加载错误弹窗 -->
+    <Teleport to="body">
+      <div v-if="loadError" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" @click.self="reload">
+        <div class="bg-white rounded-xl shadow-2xl w-[90vw] max-w-sm p-6">
+          <h3 class="text-base font-bold text-gray-800 mb-2">数据加载失败</h3>
+          <p class="text-sm text-gray-600 mb-6">{{ loadError }}</p>
+          <div class="flex justify-end">
+            <button @click="reload" class="px-4 py-2 rounded-lg text-sm font-medium bg-blue-500 text-white hover:bg-blue-600">重试</button>
+          </div>
         </div>
       </div>
-    </div>
-  </Teleport>
+    </Teleport>
 
-  <!-- 确认对话框 -->
-  <ConfirmModal />
+    <!-- 确认对话框 -->
+    <ConfirmModal />
+  </div>
 </template>
