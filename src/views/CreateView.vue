@@ -126,51 +126,51 @@ function cancelPreview() {
 
 <template>
   <div class="max-w-2xl mx-auto">
-    <h2 class="text-xl font-bold text-gray-800 mb-2">创建问答</h2>
-    <p class="text-sm text-gray-500 mb-6">
+    <h2 class="text-xl font-bold text-gray-800 dark:text-gray-100 mb-2">创建问答</h2>
+    <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">
       输入面试问题，可选 AI 生成对话格式答案；也可输入答案让 AI 优化格式，或者直接手动保存。
     </p>
 
     <!-- 错误提示 -->
-    <div v-if="error" class="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+    <div v-if="error" class="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm dark:bg-red-900/30 dark:border-red-800 dark:text-red-400">
       {{ error }}
     </div>
 
     <!-- 预览模式 -->
     <div v-if="preview" class="space-y-4">
-      <div class="p-4 rounded-lg bg-blue-50 border border-blue-200">
+      <div class="p-4 rounded-lg bg-blue-50 border border-blue-200 dark:bg-blue-900/30 dark:border-blue-800">
         <h3 class="font-medium text-blue-800 mb-3">预览 & 编辑</h3>
 
         <div class="space-y-3">
           <div>
-            <label class="block text-xs font-medium text-gray-600 mb-1">问题标题</label>
-            <input v-model="previewQuestion" class="w-full px-3 py-2 rounded border border-gray-300 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">问题标题</label>
+            <input v-model="previewQuestion" class="w-full px-3 py-2 rounded border border-gray-300 text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" />
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-600 mb-1">难度</label>
-            <select v-model="previewDifficulty" class="px-3 py-2 rounded border border-gray-300 text-sm">
+            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">难度</label>
+            <select v-model="previewDifficulty" class="px-3 py-2 rounded border border-gray-300 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100">
               <option>初级</option>
               <option>中级</option>
               <option>高级</option>
             </select>
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-600 mb-1">对话内容（Markdown）</label>
-            <textarea v-model="previewDialog" rows="12" class="w-full px-3 py-2 rounded border border-gray-300 text-sm font-mono resize-y focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">对话内容（Markdown）</label>
+            <textarea v-model="previewDialog" rows="12" class="w-full px-3 py-2 rounded border border-gray-300 text-sm font-mono resize-y focus:ring-2 focus:ring-blue-500 outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"></textarea>
           </div>
         </div>
 
         <!-- 渲染预览 -->
-        <div class="mt-3 p-3 bg-white rounded border border-gray-200">
-          <p class="text-xs text-gray-400 mb-2">渲染预览：</p>
-          <div class="prose-content text-sm text-gray-700" v-html="renderMarkdown(previewDialog)"></div>
+        <div class="mt-3 p-3 bg-white rounded border border-gray-200 dark:bg-gray-800 dark:border-gray-700">
+          <p class="text-xs text-gray-400 dark:text-gray-500 mb-2">渲染预览：</p>
+          <div class="prose-content text-sm text-gray-700 dark:text-gray-300" v-html="renderMarkdown(previewDialog)"></div>
         </div>
 
         <div class="flex gap-3 mt-4">
           <button @click="handleSave" class="px-4 py-2 rounded-lg text-sm font-medium bg-green-500 text-white hover:bg-green-600 transition-colors">
             保存到题库
           </button>
-          <button @click="cancelPreview" class="px-4 py-2 rounded-lg text-sm font-medium bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors">
+          <button @click="cancelPreview" class="px-4 py-2 rounded-lg text-sm font-medium bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">
             返回修改
           </button>
         </div>
@@ -180,32 +180,32 @@ function cancelPreview() {
     <!-- 输入表单 -->
     <form v-else @submit.prevent="handleOptimize" class="space-y-5">
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">面试问题</label>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">面试问题</label>
         <input
           v-model="question"
           type="text"
           placeholder="例如：请解释 RAG 的核心流程及其解决了什么问题？"
-          class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+          class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
         />
       </div>
 
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">答案要点</label>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">答案要点</label>
         <textarea
           v-model="answer"
           rows="8"
           placeholder="可选。输入答案要点让 AI 优化格式；留空则由 AI 自动生成完整回答。"
-          class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition resize-y"
+          class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition resize-y dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
         ></textarea>
-        <p class="text-xs text-gray-400 mt-1 text-right">{{ answer.length }} 字</p>
+        <p class="text-xs text-gray-400 dark:text-gray-500 mt-1 text-right">{{ answer.length }} 字</p>
       </div>
 
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">分类</label>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">分类</label>
         <select
           v-if="!showNewCategory"
           v-model="selectedCategory"
-          class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none transition"
+          class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none transition dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
         >
           <option value="" disabled>选择分类</option>
           <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
@@ -217,7 +217,7 @@ function cancelPreview() {
             v-model="newCategoryName"
             type="text"
             placeholder="输入新分类名称"
-            class="flex-1 px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none transition text-sm"
+            class="flex-1 px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none transition text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
             @keyup.enter="confirmNewCategory"
           />
           <button type="button" @click="confirmNewCategory" class="px-4 py-2 rounded-lg text-sm font-medium bg-blue-500 text-white hover:bg-blue-600">确定</button>

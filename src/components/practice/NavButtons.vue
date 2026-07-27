@@ -21,7 +21,7 @@ defineEmits(['prev', 'next'])
       ← 上一题
     </button>
 
-    <span class="text-sm text-gray-400 font-medium shrink-0">{{ progress }}</span>
+    <span class="text-sm text-gray-400 font-medium shrink-0 dark:text-gray-500">{{ progress }}</span>
 
     <button
       @click="$emit('next')"

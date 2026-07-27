@@ -231,7 +231,7 @@ function cancelEdit() {
 
 <template>
   <div class="w-[92%] md:w-full md:max-w-[720px] mx-auto">
-    <h2 class="text-xl font-bold text-gray-800 mb-4">题库管理</h2>
+    <h2 class="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">题库管理</h2>
 
     <BankFilterBar
       v-model:searchQuery="searchQuery"
@@ -256,7 +256,7 @@ function cancelEdit() {
     />
 
     <!-- 加载中 -->
-    <div v-if="loading" class="text-center py-10 text-gray-400">加载中...</div>
+    <div v-if="loading" class="text-center py-10 text-gray-400 dark:text-gray-500">加载中...</div>
 
     <!-- 加载错误 -->
     <div v-else-if="loadError" class="text-center py-10">
@@ -265,30 +265,30 @@ function cancelEdit() {
     </div>
 
     <!-- 空状态 -->
-    <div v-else-if="filteredQuestions.length === 0" class="text-center py-10 text-gray-400">
+    <div v-else-if="filteredQuestions.length === 0" class="text-center py-10 text-gray-400 dark:text-gray-500">
       {{ questions.length === 0 ? '题库为空，去创建第一道题吧' : '没有匹配的题目' }}
     </div>
 
     <!-- 题目列表 -->
     <div v-else class="space-y-2">
-      <label class="inline-flex items-center gap-2 text-xs text-gray-500 mb-2 cursor-pointer">
+      <label class="inline-flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mb-2 cursor-pointer">
         <input type="checkbox" :checked="selectedIds.length === filteredQuestions.length && filteredQuestions.length > 0" @change="selectAll" />
         全选 ({{ filteredQuestions.length }})
       </label>
 
-      <div v-for="item in filteredQuestions" :key="item.id" class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+      <div v-for="item in filteredQuestions" :key="item.id" class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden dark:bg-gray-800 dark:border-gray-700">
         <!-- 编辑模式 -->
         <div v-if="editId === item.id" class="p-4 space-y-3">
-          <input v-model="editForm.question" class="w-full px-3 py-2 rounded border border-gray-300 text-sm" placeholder="问题" />
-          <select v-model="editForm.category" class="px-3 py-2 rounded border border-gray-300 text-sm">
+          <input v-model="editForm.question" class="w-full px-3 py-2 rounded border border-gray-300 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" placeholder="问题" />
+          <select v-model="editForm.category" class="px-3 py-2 rounded border border-gray-300 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100">
             <option v-for="cat in sortedCategories" :key="cat" :value="cat">{{ cat }}</option>
             <option v-if="!sortedCategories.includes('未分类')" value="未分类">未分类</option>
           </select>
-          <select v-model="editForm.difficulty" class="px-3 py-2 rounded border border-gray-300 text-sm">
+          <select v-model="editForm.difficulty" class="px-3 py-2 rounded border border-gray-300 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100">
             <option>初级</option><option>中级</option><option>高级</option>
           </select>
-          <textarea v-model="editForm.dialog" rows="8" class="w-full px-3 py-2 rounded border border-gray-300 text-sm font-mono resize-y"></textarea>
-          <div class="space-y-2 pt-2 border-t border-gray-100">
+          <textarea v-model="editForm.dialog" rows="8" class="w-full px-3 py-2 rounded border border-gray-300 text-sm font-mono resize-y dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"></textarea>
+          <div class="space-y-2 pt-2 border-t border-gray-100 dark:border-gray-700">
             <div v-if="aiError" class="text-xs text-red-600">{{ aiError }}</div>
             <div class="flex gap-2 items-center flex-wrap">
               <button @click="handleAiPolish" :disabled="aiLoading"
@@ -304,7 +304,7 @@ function cancelEdit() {
             <div v-if="showSubQuestion" class="flex gap-2">
               <input v-model="subQuestionText" @keyup.enter="handleAppendSub"
                 placeholder="输入子问题，AI 将生成回答"
-                class="flex-1 px-3 py-2 rounded border border-gray-300 text-sm" />
+                class="flex-1 px-3 py-2 rounded border border-gray-300 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" />
               <button @click="handleAppendSub" :disabled="aiLoading || !subQuestionText.trim()"
                 class="px-3 py-1.5 rounded text-xs font-medium bg-teal-500 text-white hover:bg-teal-600 disabled:opacity-50 inline-flex items-center gap-1.5">
                 <span v-if="aiLoading" class="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
@@ -314,7 +314,7 @@ function cancelEdit() {
           </div>
           <div class="flex gap-2">
             <button @click="saveEdit" class="px-3 py-1.5 rounded text-xs font-medium bg-green-500 text-white hover:bg-green-600">保存</button>
-            <button @click="cancelEdit" class="px-3 py-1.5 rounded text-xs font-medium bg-gray-200 text-gray-600 hover:bg-gray-300">取消</button>
+            <button @click="cancelEdit" class="px-3 py-1.5 rounded text-xs font-medium bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-300 dark:hover:bg-gray-500">取消</button>
           </div>
         </div>
 
@@ -330,13 +330,13 @@ function cancelEdit() {
                 <span v-else class="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-600">{{ item.source }}</span>
                 <span v-if="item.hidden" class="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">已隐藏</span>
               </div>
-              <h3 class="mt-1 text-sm font-medium text-gray-800 truncate">{{ item.question }}</h3>
+              <h3 class="mt-1 text-sm font-medium text-gray-800 dark:text-gray-100 truncate">{{ item.question }}</h3>
             </div>
           </div>
-          <div v-if="expandedId === item.id" class="px-4 pb-3 border-t border-gray-100">
-            <div class="prose-content mt-2 text-sm text-gray-700" v-html="renderMarkdown(item.dialog)"></div>
+          <div v-if="expandedId === item.id" class="px-4 pb-3 border-t border-gray-100 dark:border-gray-700">
+            <div class="prose-content mt-2 text-sm text-gray-700 dark:text-gray-300" v-html="renderMarkdown(item.dialog)"></div>
           </div>
-          <div class="px-3 py-2 bg-gray-50 border-t border-gray-100 flex gap-2">
+          <div class="px-3 py-2 bg-gray-50 border-t border-gray-100 flex gap-2 dark:bg-gray-700 dark:border-gray-700">
             <button @click="startEdit(item)" class="px-3 py-1 rounded text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200">编辑</button>
             <button @click="toggleHidden(item.id)" class="px-3 py-1 rounded text-xs font-medium bg-gray-200 text-gray-600 hover:bg-gray-300">{{ item.hidden ? '取消隐藏' : '隐藏' }}</button>
             <button @click="handleDelete(item.id)" class="px-3 py-1 rounded text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200">删除</button>

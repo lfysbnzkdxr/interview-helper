@@ -4,7 +4,7 @@ import ToastContainer from './components/ui/ToastContainer.vue'
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50">
+  <div class="min-h-screen bg-gray-50 dark:bg-gray-900 dark:text-gray-100">
     <AppHeader />
     <main class="max-w-4xl mx-auto px-4 py-4 md:py-6">
       <router-view v-slot="{ Component }">

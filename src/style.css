@@ -11,7 +11,40 @@ body {
   color: #1f2937;
 }
 
-/* Markdown 渲染排版样式 */
+/* 深色模式覆盖 */
+html.dark body {
+  background-color: #111827;
+  color: #f3f4f6;
+}
+
+html.dark .prose-content {
+  color: #d1d5db;
+}
+
+html.dark .prose-content strong,
+html.dark .prose-content h1,
+html.dark .prose-content h2,
+html.dark .prose-content h3,
+html.dark .prose-content h4 {
+  color: #f9fafb;
+}
+
+html.dark .prose-content code {
+  background-color: #374151;
+}
+
+html.dark .prose-content th,
+html.dark .prose-content td {
+  border-color: #374151;
+}
+
+html.dark .prose-content th {
+  background-color: #1f2937;
+}
+
+html.dark .prose-content blockquote {
+  color: #9ca3af;
+}
 .prose-content {
   font-size: 0.9rem;
   line-height: 1.7;

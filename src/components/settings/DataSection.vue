@@ -48,17 +48,17 @@ async function handleReset() {
 </script>
 
 <template>
-  <section class="bg-white rounded-lg border border-gray-200 p-5">
-    <div v-if="message" class="mb-3 p-3 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm">
+  <section class="bg-white rounded-lg border border-gray-200 p-5 dark:bg-gray-800 dark:border-gray-700">
+    <div v-if="message" class="mb-3 p-3 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm dark:bg-green-900/30 dark:border-green-800 dark:text-green-400">
       {{ message }}
     </div>
-    <h3 class="font-medium text-gray-800 mb-4">数据管理</h3>
+    <h3 class="font-medium text-gray-800 dark:text-gray-100 mb-4">数据管理</h3>
     <div class="flex flex-wrap gap-3">
       <button @click="handleExport" class="px-4 py-2 rounded-lg text-sm font-medium bg-green-100 text-green-700 hover:bg-green-200">导出 JSON</button>
       <button @click="handleImport" class="px-4 py-2 rounded-lg text-sm font-medium bg-blue-100 text-blue-700 hover:bg-blue-200">导入 JSON</button>
       <button @click="handleReset" class="px-4 py-2 rounded-lg text-sm font-medium bg-red-100 text-red-700 hover:bg-red-200">重置为默认题库</button>
     </div>
-    <p class="text-xs text-gray-400 mt-3">
+    <p class="text-xs text-gray-400 dark:text-gray-500 mt-3">
       导出/导入可用于跨设备迁移数据。重置将清除所有自定义题目并恢复内置题目。
     </p>
   </section>

@@ -29,13 +29,13 @@ defineEmits(['update:searchQuery', 'update:filterCategory', 'update:filterDiffic
         @input="$emit('update:searchQuery', $event.target.value)"
         type="text"
         placeholder="搜索题目..."
-        class="flex-1 min-w-[150px] px-3 py-2 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+        class="flex-1 min-w-[150px] px-3 py-2 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
       />
-      <select :value="filterCategory" @change="$emit('update:filterCategory', $event.target.value)" class="px-3 py-2 rounded-lg border border-gray-300 text-sm">
+      <select :value="filterCategory" @change="$emit('update:filterCategory', $event.target.value)" class="px-3 py-2 rounded-lg border border-gray-300 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100">
         <option value="">全部分类</option>
         <option v-for="cat in sortedCategories" :key="cat" :value="cat">{{ cat }}</option>
       </select>
-      <select :value="filterDifficulty" @change="$emit('update:filterDifficulty', $event.target.value)" class="px-3 py-2 rounded-lg border border-gray-300 text-sm">
+      <select :value="filterDifficulty" @change="$emit('update:filterDifficulty', $event.target.value)" class="px-3 py-2 rounded-lg border border-gray-300 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100">
         <option value="">全部难度</option>
         <option>初级</option>
         <option>中级</option>
