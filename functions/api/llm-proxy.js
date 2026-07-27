@@ -82,6 +82,14 @@ export async function onRequest(context) {
 
     const body = await request.text()
 
+    // 限制请求体大小（100KB）
+    if (body.length > 100 * 1024) {
+      return new Response(JSON.stringify({ error: 'Request body too large (max 100KB)' }), {
+        status: 413,
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+      })
+    }
+
     // 根据 API 格式构建认证头
     const forwardHeaders = { 'Content-Type': 'application/json' }
     if (apiFormat === 'anthropic') {
