@@ -232,6 +232,7 @@ function cancelPreview() {
           class="flex-1 py-3 px-4 rounded-lg font-medium text-white transition-colors"
           :class="loading || !canSubmit ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600'"
         >
+          <span v-if="loading" class="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></span>
           {{ loading ? step : (answer.trim() ? 'AI 优化' : 'AI 生成回答') }}
         </button>
         <button

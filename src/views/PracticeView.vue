@@ -12,6 +12,8 @@ const { loadError, reload } = useQuestionBank()
 
 const {
   difficulty,
+  category,
+  categories,
   isFlipped,
   loading,
   currentQuestion,
@@ -24,6 +26,7 @@ const {
   flip,
   setDifficulty,
   loadData,
+  setCategory,
 } = useQuestionQueue()
 
 // 键盘快捷键
@@ -34,6 +37,18 @@ useKeyboard({
 })
 
 onMounted(() => loadData())
+
+// 触摸滑动支持
+let touchStartX = 0
+function onTouchStart(e) {
+  touchStartX = e.touches[0].clientX
+}
+function onTouchEnd(e) {
+  const diff = e.changedTouches[0].clientX - touchStartX
+  if (Math.abs(diff) > 50) {
+    diff > 0 ? prev() : next()
+  }
+}
 </script>
 
 <template>
@@ -48,7 +63,6 @@ onMounted(() => loadData())
       <p class="text-red-500 mb-4">{{ loadError }}</p>
       <button @click="reload" class="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm">重试</button>
     </div>
-
     <!-- 空状态 -->
     <div v-else-if="!currentQuestion" class="text-center py-20">
       <p class="text-gray-400 mb-4">{{ queue.length === 0 ? '当前筛选条件下暂无题目' : '题库为空' }}</p>
@@ -56,15 +70,27 @@ onMounted(() => loadData())
     </div>
 
     <template v-else>
-    <!-- 难度筛选 -->
-    <DifficultyFilter :current="difficulty" @change="setDifficulty" />
+    <!-- 筛选栏 -->
+    <div class="flex items-center gap-2 mb-3 flex-wrap">
+      <DifficultyFilter :current="difficulty" @change="setDifficulty" />
+      <select
+        :value="category"
+        @change="setCategory(($event.target).value)"
+        class="px-3 py-1.5 rounded-lg border border-gray-300 text-xs bg-white"
+      >
+        <option value="全部">全部分类</option>
+        <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
+      </select>
+    </div>
 
     <!-- 翻转卡片 -->
+    <div @touchstart="onTouchStart" @touchend="onTouchEnd">
     <PracticeCard
       :question="currentQuestion"
       :is-flipped="isFlipped"
       @flip="flip"
     />
+    </div>
 
     <!-- 导航按钮 -->
     <NavButtons
