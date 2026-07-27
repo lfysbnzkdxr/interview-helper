@@ -4,8 +4,13 @@ import { useQuestionBank } from '../stores/useQuestionBank.js'
 import { testConnection, PROVIDER_PRESETS } from '../services/llm.js'
 import { parseSyncCodeFromHash } from '../services/cloud-sync.js'
 import { renderMarkdown } from '../utils/markdown.js'
+import { useToast } from '../composables/useToast.js'
+import { useConfirm } from '../composables/useConfirm.js'
+import ConfirmModal from '../components/ui/ConfirmModal.vue'
 
-const { questions, load, getApiConfig, saveApiConfig, getCategories, saveCategories, updateQuestion, exportData, importData, resetToDefault, createMigration, previewCloudData, restoreFromCloud, detectMergeConflicts, applyMergeDecisions } = useQuestionBank()
+const { questions, loadError, load, reload, getApiConfig, saveApiConfig, getCategories, saveCategories, updateQuestion, exportData, importData, resetToDefault, createMigration, previewCloudData, restoreFromCloud, detectMergeConflicts, applyMergeDecisions } = useQuestionBank()
+const { show } = useToast()
+const { confirm } = useConfirm()
 
 const apiConfig = ref({ providers: [], activeId: '' })
 const cats = ref([])
@@ -13,7 +18,6 @@ const newCategory = ref('')
 const testResult = ref(null)
 const testing = ref(false)
 const testingId = ref('')
-const message = ref('')
 const showAddMenu = ref(false)
 const customProvider = ref({ name: '', baseUrl: '', models: '', apiFormat: 'openai' })
 const showCustomForm = ref(false)
@@ -60,8 +64,7 @@ const activeProvider = computed(() =>
 function addFromPreset(preset) {
   // 检查是否已添加
   if (apiConfig.value.providers.find(p => p.id === preset.id)) {
-    message.value = `「${preset.name}」已存在`
-    setTimeout(() => { message.value = '' }, 2000)
+    show(`「${preset.name}」已存在`, 'warning')
     return
   }
   apiConfig.value.providers.push({
@@ -85,8 +88,7 @@ function addFromPreset(preset) {
 function addCustomProvider() {
   const { name, baseUrl, models, apiFormat } = customProvider.value
   if (!name.trim() || !baseUrl.trim()) {
-    message.value = '请填写名称和 API 地址'
-    setTimeout(() => { message.value = '' }, 2000)
+    show('请填写名称和 API 地址', 'error')
     return
   }
   const id = 'custom-' + Date.now()
@@ -123,8 +125,7 @@ function setActive(id) {
 
 async function handleSaveConfig() {
   await saveApiConfig(apiConfig.value)
-  message.value = 'API 配置已保存'
-  setTimeout(() => { message.value = '' }, 3000)
+  show('API 配置已保存', 'success')
 }
 
 async function handleTest(provider) {
@@ -145,7 +146,7 @@ async function handleTest(provider) {
 async function addCategory() {
   const name = newCategory.value.trim()
   if (!name) return
-  if (cats.value.includes(name)) { message.value = '分类已存在'; return }
+  if (cats.value.includes(name)) { show('分类已存在', 'warning'); return }
   cats.value.push(name)
   await saveCategories(cats.value)
   newCategory.value = ''
@@ -153,8 +154,7 @@ async function addCategory() {
 
 async function removeCategory(name) {
   if (name === '未分类') {
-    message.value = '「未分类」为默认分类，不可删除'
-    setTimeout(() => { message.value = '' }, 2000)
+    show('「未分类」为默认分类，不可删除', 'warning')
     return
   }
   const affected = questions.value.filter(q => q.category === name)
@@ -162,7 +162,7 @@ async function removeCategory(name) {
   const msg = count > 0
     ? `分类「${name}」下有 ${count} 道题目，删除后这些题目将移至「未分类」。确定删除？`
     : `确定删除分类「${name}」？`
-  if (!confirm(msg)) return
+  if (!await confirm({ title: '删除分类', message: msg, danger: true })) return
   // 将关联题目迁移到「未分类」
   if (count > 0) {
     if (!cats.value.includes('未分类')) {
@@ -200,23 +200,21 @@ function handleImport() {
     if (!file) return
     const text = await file.text()
     try {
-      const mode = confirm('点击"确定"覆盖现有数据，点击"取消"合并到现有数据') ? 'overwrite' : 'merge'
+      const mode = await confirm({ title: '选择导入模式', message: '点击"确定"覆盖现有数据，点击"取消"合并到现有数据' }) ? 'overwrite' : 'merge'
       await importData(text, mode)
-      message.value = '导入成功'
-      setTimeout(() => { message.value = '' }, 3000)
+      show('导入成功', 'success')
     } catch (err) {
-      message.value = '导入失败: ' + err.message
+      show('导入失败: ' + err.message, 'error')
     }
   }
   input.click()
 }
 
 async function handleReset() {
-  if (!confirm('确定重置为默认题库？所有自定义题目将被清除。')) return
+  if (!await confirm({ title: '重置确认', message: '确定重置为默认题库？所有自定义题目将被清除。', danger: true })) return
   await resetToDefault()
   cats.value = await getCategories()
-  message.value = '已重置为默认题库'
-  setTimeout(() => { message.value = '' }, 3000)
+  show('已重置为默认题库', 'success')
 }
 
 // ===== 云迁移操作 =====
@@ -229,12 +227,10 @@ async function handleCreateMigration(ttl) {
     if (result.success) {
       migrationResult.value = result
     } else {
-      message.value = '上传失败: ' + result.error
-      setTimeout(() => { message.value = '' }, 4000)
+      show('上传失败: ' + result.error, 'error')
     }
   } catch (e) {
-    message.value = '上传失败: ' + e.message
-    setTimeout(() => { message.value = '' }, 4000)
+    show('上传失败: ' + e.message, 'error')
   } finally {
     migrating.value = false
   }
@@ -279,8 +275,7 @@ async function handleCopyLink() {
 async function handlePreview() {
   const code = downloadCode.value.trim().toUpperCase()
   if (!code || code.length < 4) {
-    message.value = '请输入有效的迁移码'
-    setTimeout(() => { message.value = '' }, 2000)
+    show('请输入有效的迁移码', 'warning')
     return
   }
   previewLoading.value = true
@@ -290,12 +285,10 @@ async function handlePreview() {
     if (result.success) {
       previewData.value = result
     } else {
-      message.value = result.error || '该迁移码无效或已过期'
-      setTimeout(() => { message.value = '' }, 4000)
+      show(result.error || '该迁移码无效或已过期', 'error')
     }
   } catch (e) {
-    message.value = '查询失败: ' + e.message
-    setTimeout(() => { message.value = '' }, 4000)
+    show('查询失败: ' + e.message, 'error')
   } finally {
     previewLoading.value = false
   }
@@ -309,18 +302,17 @@ async function handleRestore(mode) {
     try {
       const result = await restoreFromCloud(previewData.value._raw, 'overwrite')
       if (result.success) {
-        message.value = '✅ 已覆盖恢复成功'
+        show('已覆盖恢复成功', 'success')
         cats.value = await getCategories()
         previewData.value = null
         downloadCode.value = ''
       } else {
-        message.value = '恢复失败: ' + result.error
+        show('恢复失败: ' + result.error, 'error')
       }
     } catch (e) {
-      message.value = '恢复失败: ' + e.message
+      show('恢复失败: ' + e.message, 'error')
     } finally {
       downloading.value = false
-      setTimeout(() => { message.value = '' }, 4000)
     }
     return
   }
@@ -332,15 +324,14 @@ async function handleRestore(mode) {
     downloading.value = true
     try {
       await applyMergeDecisions([], newQuestions, previewData.value._raw.categories)
-      message.value = `✅ 合并成功，新增 ${newQuestions.length} 道题目`
+      show('合并成功', 'success')
       cats.value = await getCategories()
       previewData.value = null
       downloadCode.value = ''
     } catch (e) {
-      message.value = '合并失败: ' + e.message
+      show('合并失败: ' + e.message, 'error')
     } finally {
       downloading.value = false
-      setTimeout(() => { message.value = '' }, 4000)
     }
   } else {
     // 有冲突，进入冲突解决流程
@@ -365,17 +356,16 @@ async function applyMerge() {
     await applyMergeDecisions(decisions, mergeNewQuestions.value, previewData.value?._raw?.categories)
     const cloudCount = mergeNewQuestions.value.length
     const bothCount = conflictDecisions.value.filter(d => d === 'both').length
-    message.value = `✅ 合并完成：新增 ${cloudCount + bothCount} 道，保留本地 ${conflictDecisions.value.filter(d => d === 'local').length} 道，更新 ${conflictDecisions.value.filter(d => d === 'cloud').length} 道`
+    show('合并完成', 'success')
     cats.value = await getCategories()
     previewData.value = null
     downloadCode.value = ''
     mergeConflicts.value = []
     mergeNewQuestions.value = []
   } catch (e) {
-    message.value = '合并失败: ' + e.message
+    show('合并失败: ' + e.message, 'error')
   } finally {
     mergeApplying.value = false
-    setTimeout(() => { message.value = '' }, 5000)
   }
 }
 
@@ -395,11 +385,6 @@ function formatExpiry(ttl) {
 <template>
   <div class="max-w-2xl mx-auto space-y-8">
     <h2 class="text-xl font-bold text-gray-800">设置</h2>
-
-    <!-- 提示消息 -->
-    <div v-if="message" class="p-3 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm">
-      {{ message }}
-    </div>
 
     <!-- API 提供商配置 -->
     <section class="bg-white rounded-lg border border-gray-200 p-5">
@@ -670,4 +655,20 @@ function formatExpiry(ttl) {
       </div>
     </section>
   </div>
+
+  <!-- 加载错误弹窗 -->
+  <Teleport to="body">
+    <div v-if="loadError" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" @click.self="reload">
+      <div class="bg-white rounded-xl shadow-2xl w-[90vw] max-w-sm p-6">
+        <h3 class="text-base font-bold text-gray-800 mb-2">数据加载失败</h3>
+        <p class="text-sm text-gray-600 mb-6">{{ loadError }}</p>
+        <div class="flex justify-end">
+          <button @click="reload" class="px-4 py-2 rounded-lg text-sm font-medium bg-blue-500 text-white hover:bg-blue-600">重试</button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
+
+  <!-- 确认对话框 -->
+  <ConfirmModal />
 </template>

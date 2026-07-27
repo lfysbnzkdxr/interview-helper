@@ -4,7 +4,7 @@ import CategoryTabs from '../components/browse/CategoryTabs.vue'
 import QuestionList from '../components/browse/QuestionList.vue'
 import { useQuestionBank } from '../stores/useQuestionBank.js'
 
-const { questions, categories, loading, load, saveCategories } = useQuestionBank()
+const { questions, categories, loading, loadError, load, reload, saveCategories } = useQuestionBank()
 
 const activeName = ref(null) // 当前选中分类名称，null 表示「全部」
 
@@ -58,17 +58,28 @@ onMounted(() => {
 
 <template>
   <div class="w-[92%] md:w-full md:max-w-[720px] mx-auto">
-    <!-- 分类 Tab -->
-    <div class="border-b border-gray-200 mb-4">
-      <CategoryTabs
-        :categories="categoryList"
-        :active-id="activeId"
-        @select="handleSelect"
-        @reorder="handleReorder"
-      />
+    <!-- 加载中 -->
+    <div v-if="loading" class="text-center py-10 text-gray-400">加载中...</div>
+
+    <!-- 加载错误 -->
+    <div v-else-if="loadError" class="text-center py-20">
+      <p class="text-red-500 mb-4">{{ loadError }}</p>
+      <button @click="reload" class="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm">重试</button>
     </div>
 
-    <!-- 题目列表 -->
-    <QuestionList :questions="filteredQuestions" />
+    <template v-else>
+      <!-- 分类 Tab -->
+      <div class="border-b border-gray-200 mb-4">
+        <CategoryTabs
+          :categories="categoryList"
+          :active-id="activeId"
+          @select="handleSelect"
+          @reorder="handleReorder"
+        />
+      </div>
+
+      <!-- 题目列表 -->
+      <QuestionList :questions="filteredQuestions" />
+    </template>
   </div>
 </template>

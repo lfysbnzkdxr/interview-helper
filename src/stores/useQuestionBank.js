@@ -7,6 +7,7 @@ const questions = ref([])
 const categories = ref([])
 const loading = ref(false)
 const loaded = ref(false)
+const loadError = ref('')
 
 export function useQuestionBank() {
   /**
@@ -40,6 +41,9 @@ export function useQuestionBank() {
       }
 
       loaded.value = true
+    } catch (e) {
+      loadError.value = '数据加载失败: ' + (e.message || '未知错误')
+      console.error('数据加载失败:', e)
     } finally {
       loading.value = false
     }
@@ -50,6 +54,7 @@ export function useQuestionBank() {
    */
   async function reload() {
     loaded.value = false
+    loadError.value = ''
     await load()
   }
 
@@ -336,6 +341,7 @@ export function useQuestionBank() {
     categories,
     loading,
     loaded,
+    loadError,
     load,
     reload,
     addQuestion,

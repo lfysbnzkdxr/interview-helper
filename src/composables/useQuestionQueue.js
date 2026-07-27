@@ -84,8 +84,6 @@ export function useQuestionQueue() {
     initQueue(difficulty.value)
   }
 
-  loadData()
-
   return {
     queue,
     currentIndex,
@@ -99,6 +97,7 @@ export function useQuestionQueue() {
     next,
     prev,
     flip,
+    loadData,
     setDifficulty,
   }
 }
