@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useQuestionBank } from '../../stores/useQuestionBank.js'
+import { DEFAULT_CATEGORY } from '../../utils/constants.js'
 
 const { allQuestions: questions, getCategories, saveCategories, updateQuestion } = useQuestionBank()
 
@@ -22,7 +23,7 @@ async function addCategory() {
 }
 
 async function removeCategory(name) {
-  if (name === '未分类') {
+  if (name === DEFAULT_CATEGORY) {
     message.value = '「未分类」为默认分类，不可删除'
     setTimeout(() => { message.value = '' }, 2000)
     return
@@ -34,16 +35,16 @@ async function removeCategory(name) {
     : `确定删除分类「${name}」？`
   if (!confirm(msg)) return
   if (count > 0) {
-    if (!cats.value.includes('未分类')) {
-      cats.value.push('未分类')
+    if (!cats.value.includes(DEFAULT_CATEGORY)) {
+      cats.value.push(DEFAULT_CATEGORY)
     }
     for (const q of affected) {
-      await updateQuestion(q.id, { category: '未分类' })
+      await updateQuestion(q.id, { category: DEFAULT_CATEGORY })
     }
   }
   cats.value = cats.value.filter(c => c !== name)
-  const sorted = cats.value.filter(c => c !== '未分类')
-  if (cats.value.includes('未分类')) sorted.push('未分类')
+  const sorted = cats.value.filter(c => c !== DEFAULT_CATEGORY)
+  if (cats.value.includes(DEFAULT_CATEGORY)) sorted.push(DEFAULT_CATEGORY)
   cats.value = sorted
   await saveCategories(cats.value)
 }

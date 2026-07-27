@@ -4,6 +4,7 @@ import { useQuestionBank } from '../stores/useQuestionBank.js'
 import { optimizeQA, generateQA } from '../services/llm.js'
 import { renderMarkdown } from '../utils/markdown.js'
 import { useToast } from '../composables/useToast.js'
+import { DEFAULT_CATEGORY, DIFFICULTY_LEVELS, DEFAULT_DIFFICULTY } from '../utils/constants.js'
 
 const { categories, addQuestion, load, saveCategories } = useQuestionBank()
 const { success } = useToast()
@@ -41,9 +42,9 @@ async function confirmNewCategory() {
   const name = newCategoryName.value.trim()
   if (!name) return
   if (!categories.value.includes(name)) {
-    const cats = categories.value.filter(c => c !== '未分类')
+    const cats = categories.value.filter(c => c !== DEFAULT_CATEGORY)
     cats.push(name)
-    if (categories.value.includes('未分类')) cats.push('未分类')
+    if (categories.value.includes(DEFAULT_CATEGORY)) cats.push(DEFAULT_CATEGORY)
     await saveCategories(cats)
   }
   selectedCategory.value = name
@@ -78,7 +79,7 @@ async function handleOptimize() {
     preview.value = result
     previewQuestion.value = result.optimized_question || question.value
     previewDialog.value = result.dialog || answer.value
-    previewDifficulty.value = result.difficulty || '中级'
+    previewDifficulty.value = result.difficulty || DEFAULT_DIFFICULTY
   } catch (e) {
     error.value = e.message
   } finally {
@@ -91,15 +92,15 @@ function handleManualSave() {
   preview.value = { manual: true }
   previewQuestion.value = question.value
   previewDialog.value = answer.value
-  previewDifficulty.value = '中级'
+  previewDifficulty.value = DEFAULT_DIFFICULTY
 }
 
 async function handleSave() {
   error.value = ''
   try {
     // 确保「未分类」进入分类列表
-    if (selectedCategory.value === '未分类' && !categories.value.includes('未分类')) {
-      await saveCategories([...categories.value, '未分类'])
+    if (selectedCategory.value === DEFAULT_CATEGORY && !categories.value.includes(DEFAULT_CATEGORY)) {
+      await saveCategories([...categories.value, DEFAULT_CATEGORY])
     }
     await addQuestion({
       category: selectedCategory.value,
@@ -149,9 +150,7 @@ function cancelPreview() {
           <div>
             <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">难度</label>
             <select v-model="previewDifficulty" class="px-3 py-2 rounded border border-gray-300 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100">
-              <option>初级</option>
-              <option>中级</option>
-              <option>高级</option>
+              <option v-for="d in DIFFICULTY_LEVELS" :key="d">{{ d }}</option>
             </select>
           </div>
           <div>
@@ -209,7 +208,7 @@ function cancelPreview() {
         >
           <option value="" disabled>选择分类</option>
           <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
-          <option v-if="!categories.includes('未分类')" value="未分类">未分类</option>
+          <option v-if="!categories.includes(DEFAULT_CATEGORY)" :value="DEFAULT_CATEGORY">未分类</option>
           <option value="__new__">+ 新建分类...</option>
         </select>
         <div v-else class="flex gap-2">

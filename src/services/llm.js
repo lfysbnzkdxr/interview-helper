@@ -239,8 +239,8 @@ function extractJSON(content) {
  * 统一 LLM 调用入口
  * @param {string} systemPrompt - 系统提示词
  * @param {string} userContent - 用户内容
- * @param {object} options - { timeout?, maxTokens?, temperature? }
- * @returns {Promise<{optimized_question, dialog, difficulty}>}
+ * @param {{ timeout?: number, maxTokens?: number, temperature?: number }} options
+ * @returns {Promise<import('../types.js').LLMResult>}
  */
 async function callLLM(systemPrompt, userContent, options = {}) {
   const provider = await getActiveProvider()
@@ -305,7 +305,7 @@ async function callLLMWithRetry(systemPrompt, userContent, options = {}) {
  * 调用 LLM 优化面试问答
  * @param {string} question - 面试问题
  * @param {string} answer - 答案要点
- * @returns {Promise<{optimized_question, dialog, difficulty}>}
+ * @returns {Promise<import('../types.js').LLMResult>}
  */
 export const optimizeQA = (question, answer) =>
   callLLMWithRetry(OPTIMIZE_PROMPT, `【问题】${question}\n【答案】${answer}`)
@@ -313,7 +313,7 @@ export const optimizeQA = (question, answer) =>
 /**
  * 调用 LLM 根据问题自动生成完整对话
  * @param {string} question - 面试问题
- * @returns {Promise<{optimized_question, dialog, difficulty}>}
+ * @returns {Promise<import('../types.js').LLMResult>}
  */
 export const generateQA = (question) =>
   callLLMWithRetry(GENERATE_PROMPT, `【问题】${question}`)
@@ -322,7 +322,7 @@ export const generateQA = (question) =>
  * 调用 LLM 润色现有对话
  * @param {string} question - 问题标题
  * @param {string} dialog - 现有对话内容
- * @returns {Promise<{optimized_question, dialog, difficulty}>}
+ * @returns {Promise<import('../types.js').LLMResult>}
  */
 export const polishDialog = (question, dialog) =>
   callLLMWithRetry(POLISH_PROMPT, `【问题】${question}\n【现有对话】${dialog}`, { maxTokens: 4000 })
@@ -332,14 +332,15 @@ export const polishDialog = (question, dialog) =>
  * @param {string} question - 主题问题
  * @param {string} existingDialog - 现有对话内容
  * @param {string} newSubQuestion - 新增子问题
- * @returns {Promise<{optimized_question, dialog, difficulty}>}
+ * @returns {Promise<import('../types.js').LLMResult>}
  */
 export const appendSubQA = (question, existingDialog, newSubQuestion) =>
   callLLMWithRetry(APPEND_PROMPT, `【主题】${question}\n【现有对话】${existingDialog}\n【新增子问题】${newSubQuestion}`, { maxTokens: 4000 })
 
 /**
  * 测试指定提供商的连接
- * @param {object} providerConfig - 提供商配置
+ * @param {import('../types.js').ApiProvider} [providerConfig] - 提供商配置，缺省用当前激活的
+ * @returns {Promise<{success: boolean, error?: string}>}
  */
 export async function testConnection(providerConfig) {
   try {

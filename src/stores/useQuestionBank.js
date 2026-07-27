@@ -1,6 +1,7 @@
 import { ref, computed } from 'vue'
 import { getDB, generateId, initDB } from './db.js'
 import { uploadBackup, downloadBackup, generateSyncCode, getSyncLink } from '../services/cloud-sync.js'
+import { DEFAULT_CATEGORY } from '../utils/constants.js'
 
 // 模块级状态（跨组件共享）
 const questions = ref([])
@@ -30,15 +31,15 @@ export function useQuestionBank() {
       const orphans = questions.value.filter(q => q.category && !catSet.has(q.category))
       if (orphans.length > 0) {
         for (const q of orphans) {
-          q.category = '未分类'
+          q.category = DEFAULT_CATEGORY
           q.updatedAt = Date.now()
           await db.put('questions', JSON.parse(JSON.stringify(q)))
         }
       }
 
       // 兑容迁移：旧版本初始化的数据库可能缺少「未分类」
-      if (!categories.value.includes('未分类')) {
-        categories.value.push('未分类')
+      if (!categories.value.includes(DEFAULT_CATEGORY)) {
+        categories.value.push(DEFAULT_CATEGORY)
         await db.put('settings', { key: 'categories', value: JSON.parse(JSON.stringify(categories.value)) })
       }
 
@@ -72,6 +73,8 @@ export function useQuestionBank() {
 
   /**
    * 新增题目
+   * @param {{ category: string, question: string, dialog: string, difficulty: string, source?: string }} data
+   * @returns {Promise<import('../types.js').Question>}
    */
   async function addQuestion({ category, question, dialog, difficulty, source = '手动创建' }) {
     const db = await getDB()
@@ -95,6 +98,9 @@ export function useQuestionBank() {
 
   /**
    * 更新题目
+   * @param {string} id
+   * @param {Partial<import('../types.js').Question>} updates
+   * @returns {Promise<import('../types.js').Question|null>}
    */
   async function updateQuestion(id, updates) {
     const db = await getDB()
@@ -109,6 +115,7 @@ export function useQuestionBank() {
 
   /**
    * 删除题目
+   * @param {string} id
    */
   async function deleteQuestion(id) {
     const db = await getDB()
@@ -131,7 +138,7 @@ export function useQuestionBank() {
    * 批量更新（单事务）
    * 对指定 id 列表执行统一字段更新，大幅减少 IndexedDB 事务次数
    * @param {string[]} ids - 题目 id 列表
-   * @param {object} updates - 要更新的字段
+   * @param {Partial<import('../types.js').Question>} updates - 要更新的字段
    */
   async function batchUpdate(ids, updates) {
     const db = await getDB()

@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import CategoryTabs from '../components/browse/CategoryTabs.vue'
 import QuestionList from '../components/browse/QuestionList.vue'
 import { useQuestionBank } from '../stores/useQuestionBank.js'
+import { DEFAULT_CATEGORY } from '../utils/constants.js'
 
 const { visibleQuestions: questions, categories, loading, loadError, load, reload, saveCategories } = useQuestionBank()
 
@@ -12,8 +13,8 @@ const activeName = ref(null) // 当前选中分类名称，null 表示「全部�
 const sortedCategories = computed(() => {
   const cats = [...categories.value]
   return cats.sort((a, b) => {
-    if (a === '未分类') return 1
-    if (b === '未分类') return -1
+    if (a === DEFAULT_CATEGORY) return 1
+    if (b === DEFAULT_CATEGORY) return -1
     return 0
   })
 })
@@ -45,8 +46,8 @@ function handleSelect(id) {
 // 拖拽排序后持久化新顺序
 async function handleReorder(names) {
   // 保证「未分类」始终在最后
-  const sorted = names.filter(n => n !== '未分类')
-  if (names.includes('未分类')) sorted.push('未分类')
+  const sorted = names.filter(n => n !== DEFAULT_CATEGORY)
+  if (names.includes(DEFAULT_CATEGORY)) sorted.push(DEFAULT_CATEGORY)
   await saveCategories(sorted)
 }
 

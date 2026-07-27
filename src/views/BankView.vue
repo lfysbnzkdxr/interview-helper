@@ -1,11 +1,12 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useQuestionBank } from '../stores/useQuestionBank.js'
 import { renderMarkdown } from '../utils/markdown.js'
 import { getDifficultyColor } from '../utils/helpers.js'
 import { polishDialog, appendSubQA } from '../services/llm.js'
 import { useConfirm } from '../composables/useConfirm.js'
 import { useToast } from '../composables/useToast.js'
+import { DEFAULT_CATEGORY, DIFFICULTY_LEVELS, PAGE_SIZE } from '../utils/constants.js'
 import BankFilterBar from '../components/bank/BankFilterBar.vue'
 import BankBatchBar from '../components/bank/BankBatchBar.vue'
 import AiPolishCompare from '../components/bank/AiPolishCompare.vue'
@@ -43,8 +44,8 @@ const compareEditSide = ref(null)
 const sortedCategories = computed(() => {
   const cats = [...categories.value]
   return cats.sort((a, b) => {
-    if (a === '未分类') return 1
-    if (b === '未分类') return -1
+    if (a === DEFAULT_CATEGORY) return 1
+    if (b === DEFAULT_CATEGORY) return -1
     return 0
   })
 })
@@ -66,10 +67,28 @@ const filteredQuestions = computed(() => {
   return list
 })
 
+// 分页
+const currentPage = ref(1)
+const totalPages = computed(() => Math.max(1, Math.ceil(filteredQuestions.value.length / PAGE_SIZE)))
+const pagedQuestions = computed(() => {
+  const start = (currentPage.value - 1) * PAGE_SIZE
+  return filteredQuestions.value.slice(start, start + PAGE_SIZE)
+})
+
+// 筛选条件变化时重置页码
+watch([searchQuery, filterCategory, filterDifficulty], () => {
+  currentPage.value = 1
+})
+
+// 数据缩减时钳制页码
+watch(totalPages, (tp) => {
+  if (currentPage.value > tp) currentPage.value = tp
+})
+
 const stats = computed(() => {
   const total = questions.value.length
   const byCat = {}
-  const byDiff = { '初级': 0, '中级': 0, '高级': 0 }
+  const byDiff = Object.fromEntries(DIFFICULTY_LEVELS.map(d => [d, 0]))
   questions.value.forEach(q => {
     byCat[q.category] = (byCat[q.category] || 0) + 1
     if (byDiff[q.difficulty] !== undefined) byDiff[q.difficulty]++
@@ -88,10 +107,13 @@ function toggleSelect(id) {
 }
 
 function selectAll() {
-  if (selectedIds.value.length === filteredQuestions.value.length) {
-    selectedIds.value = []
+  const pageIds = pagedQuestions.value.map(q => q.id)
+  const allSelected = pageIds.every(id => selectedIds.value.includes(id))
+  if (allSelected) {
+    selectedIds.value = selectedIds.value.filter(id => !pageIds.includes(id))
   } else {
-    selectedIds.value = filteredQuestions.value.map(q => q.id)
+    const merged = new Set([...selectedIds.value, ...pageIds])
+    selectedIds.value = [...merged]
   }
 }
 
@@ -132,9 +154,9 @@ async function confirmBatchNewCategory() {
   const name = batchNewCategoryName.value.trim()
   if (!name) return
   if (!categories.value.includes(name)) {
-    const cats = categories.value.filter(c => c !== '未分类')
+    const cats = categories.value.filter(c => c !== DEFAULT_CATEGORY)
     cats.push(name)
-    if (categories.value.includes('未分类')) cats.push('未分类')
+    if (categories.value.includes(DEFAULT_CATEGORY)) cats.push(DEFAULT_CATEGORY)
     await saveCategories(cats)
   }
   showBatchNewCategory.value = false
@@ -163,7 +185,7 @@ async function handleBatchMove(cat) {
 }
 
 function startEdit(item) {
-  const cat = categories.value.includes(item.category) ? item.category : '未分类'
+  const cat = categories.value.includes(item.category) ? item.category : DEFAULT_CATEGORY
   editId.value = item.id
   editForm.value = { question: item.question, dialog: item.dialog, difficulty: item.difficulty, category: cat }
   expandedId.value = null
@@ -277,20 +299,20 @@ function cancelEdit() {
     <!-- 题目列表 -->
     <div v-else class="space-y-2">
       <label class="inline-flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mb-2 cursor-pointer">
-        <input type="checkbox" :checked="selectedIds.length === filteredQuestions.length && filteredQuestions.length > 0" @change="selectAll" />
-        全选 ({{ filteredQuestions.length }})
+        <input type="checkbox" :checked="pagedQuestions.length > 0 && pagedQuestions.every(q => selectedIds.includes(q.id))" @change="selectAll" />
+        全选本页 ({{ pagedQuestions.length }}) / 共 {{ filteredQuestions.length }} 题
       </label>
 
-      <div v-for="item in filteredQuestions" :key="item.id" class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden dark:bg-gray-800 dark:border-gray-700">
+      <div v-for="item in pagedQuestions" :key="item.id" class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden dark:bg-gray-800 dark:border-gray-700">
         <!-- 编辑模式 -->
         <div v-if="editId === item.id" class="p-4 space-y-3">
           <input v-model="editForm.question" class="w-full px-3 py-2 rounded border border-gray-300 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" placeholder="问题" />
           <select v-model="editForm.category" class="px-3 py-2 rounded border border-gray-300 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100">
             <option v-for="cat in sortedCategories" :key="cat" :value="cat">{{ cat }}</option>
-            <option v-if="!sortedCategories.includes('未分类')" value="未分类">未分类</option>
+            <option v-if="!sortedCategories.includes(DEFAULT_CATEGORY)" :value="DEFAULT_CATEGORY">未分类</option>
           </select>
           <select v-model="editForm.difficulty" class="px-3 py-2 rounded border border-gray-300 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100">
-            <option>初级</option><option>中级</option><option>高级</option>
+            <option v-for="d in DIFFICULTY_LEVELS" :key="d">{{ d }}</option>
           </select>
           <textarea v-model="editForm.dialog" rows="8" class="w-full px-3 py-2 rounded border border-gray-300 text-sm font-mono resize-y dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"></textarea>
           <div class="space-y-2 pt-2 border-t border-gray-100 dark:border-gray-700">
@@ -330,7 +352,7 @@ function cancelEdit() {
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 flex-wrap">
                 <span class="text-xs px-2 py-0.5 rounded-full" :class="getDifficultyColor(item.difficulty)">{{ item.difficulty }}</span>
-                <span class="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">{{ categories.includes(item.category) ? item.category : '未分类' }}</span>
+                <span class="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">{{ categories.includes(item.category) ? item.category : DEFAULT_CATEGORY }}</span>
                 <span v-if="item.builtIn" class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">内置</span>
                 <span v-else class="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-600">{{ item.source }}</span>
                 <span v-if="item.hidden" class="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">已隐藏</span>
@@ -347,6 +369,28 @@ function cancelEdit() {
             <button @click="handleDelete(item.id)" class="px-3 py-1 rounded text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200">删除</button>
           </div>
         </template>
+      </div>
+
+      <!-- 分页控件 -->
+      <div v-if="totalPages > 1" class="flex items-center justify-center gap-1 pt-4">
+        <button @click="currentPage--" :disabled="currentPage <= 1"
+          class="px-2.5 py-1.5 rounded text-xs font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
+          ←
+        </button>
+        <template v-for="p in totalPages" :key="p">
+          <button v-if="p === 1 || p === totalPages || Math.abs(p - currentPage) <= 2"
+            @click="currentPage = p"
+            class="w-8 h-8 rounded text-xs font-medium transition-colors"
+            :class="p === currentPage ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'">
+            {{ p }}
+          </button>
+          <span v-else-if="p === 2 && currentPage > 4" class="px-1 text-gray-400 text-xs">…</span>
+          <span v-else-if="p === totalPages - 1 && currentPage < totalPages - 3" class="px-1 text-gray-400 text-xs">…</span>
+        </template>
+        <button @click="currentPage++" :disabled="currentPage >= totalPages"
+          class="px-2.5 py-1.5 rounded text-xs font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
+          →
+        </button>
       </div>
     </div>
 

@@ -1,8 +1,6 @@
 import { openDB } from 'idb'
 import seedData from '../data/seed-questions.json'
-
-const DB_NAME = 'interview-helper-db'
-const DB_VERSION = 1
+import { DB_NAME, DB_VERSION, DEFAULT_CATEGORY } from '../utils/constants.js'
 
 let dbPromise = null
 
@@ -46,7 +44,7 @@ export async function initDB() {
 
   // 导入分类（「未分类」为系统默认，始终存在且固定在末尾）
   const categories = seedData.categories.map(c => c.display_name)
-  if (!categories.includes('未分类')) categories.push('未分类')
+  if (!categories.includes(DEFAULT_CATEGORY)) categories.push(DEFAULT_CATEGORY)
   await db.put('settings', { key: 'categories', value: categories })
 
   // 导入默认 API 配置
@@ -67,7 +65,7 @@ export async function initDB() {
   const now = Date.now()
   const questions = seedData.questions.map(q => ({
     id: generateId(),
-    category: categoryMap[q.category_id] || '未分类',
+    category: categoryMap[q.category_id] || DEFAULT_CATEGORY,
     question: q.question,
     dialog: q.dialog,
     difficulty: q.difficulty,
