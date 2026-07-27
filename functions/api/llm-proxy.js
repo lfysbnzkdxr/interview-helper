@@ -17,7 +17,11 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'Content-Type, X-Target-Url, X-Api-Key, X-Api-Format',
 }
 
-/** 允许转发的 LLM API 域名白名单（新增模型时只需在此添加） */
+/** 允许转发的 LLM API 域名白名单
+ * 同步维护：
+ * - src/services/llm.js 的 corsFriendlyHosts
+ * - worker/proxy.js 的 ALLOWED_HOSTS
+ * 新增模型时请同时更新以上三处 */
 const ALLOWED_HOSTS = [
   'api.deepseek.com',
   'open.bigmodel.cn',

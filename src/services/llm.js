@@ -150,6 +150,7 @@ function shouldUseProxy(provider) {
   if (provider.needsProxy !== undefined) return provider.needsProxy
   // 自定义提供商：检查是否在已知支持 CORS 的域名列表中
   const corsFriendlyHosts = ['api.deepseek.com', 'open.bigmodel.cn', 'api.moonshot.cn', 'dashscope.aliyuncs.com']
+  // 注意：新增域名时请同步更新 functions/api/llm-proxy.js 和 worker/proxy.js 中的 ALLOWED_HOSTS
   try {
     const host = new URL(provider.baseUrl).hostname
     return !corsFriendlyHosts.includes(host)

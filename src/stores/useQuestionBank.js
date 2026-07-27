@@ -59,9 +59,14 @@ export function useQuestionBank() {
   }
 
   /**
-   * 获取可见题目（排除隐藏的内置题）
+   * 全部题目（含隐藏）
    */
-  const visibleQuestions = computed(() => questions.value)
+  const allQuestions = questions
+
+  /**
+   * 可见题目（排除隐藏题）
+   */
+  const visibleQuestions = computed(() => questions.value.filter(q => !q.hidden))
 
   /**
    * 新增题目
@@ -372,7 +377,8 @@ export function useQuestionBank() {
   }
 
   return {
-    questions: visibleQuestions,
+    allQuestions,
+    visibleQuestions,
     categories,
     loading,
     loaded,
