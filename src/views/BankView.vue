@@ -4,11 +4,16 @@ import { useQuestionBank } from '../stores/useQuestionBank.js'
 import { renderMarkdown } from '../utils/markdown.js'
 import { getDifficultyColor } from '../utils/helpers.js'
 import { polishDialog, appendSubQA } from '../services/llm.js'
+import { useConfirm } from '../composables/useConfirm.js'
+import { useToast } from '../composables/useToast.js'
 import BankFilterBar from '../components/bank/BankFilterBar.vue'
 import BankBatchBar from '../components/bank/BankBatchBar.vue'
 import AiPolishCompare from '../components/bank/AiPolishCompare.vue'
+import ConfirmModal from '../components/ui/ConfirmModal.vue'
 
-const { allQuestions: questions, categories, loading, loadError, load, reload, deleteQuestion, deleteQuestions, toggleHidden, setHidden, updateQuestion, saveCategories } = useQuestionBank()
+const { allQuestions: questions, categories, loading, loadError, load, reload, deleteQuestion, batchUpdate, batchDelete, toggleHidden, setHidden, updateQuestion, saveCategories } = useQuestionBank()
+const { confirm } = useConfirm()
+const { success } = useToast()
 
 const searchQuery = ref('')
 const filterCategory = ref('')
@@ -99,7 +104,7 @@ async function handleDelete(id) {
 async function handleBatchDelete() {
   const count = selectedIds.value.length
   if (!await confirm({ title: '批量删除确认', message: `确定删除选中的 ${count} 道题吗？`, danger: true })) return
-  await deleteQuestions(selectedIds.value)
+  await batchDelete([...selectedIds.value])
   selectedIds.value = []
   success(`已删除 ${count} 道题`)
 }
@@ -345,6 +350,7 @@ function cancelEdit() {
       </div>
     </div>
 
+    <ConfirmModal />
     <AiPolishCompare
       :show="showCompare"
       :originalDialog="originalDialog"
