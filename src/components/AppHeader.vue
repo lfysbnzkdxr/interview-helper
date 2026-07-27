@@ -8,7 +8,7 @@ const { isDark, toggle } = useDarkMode()
   <header class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50 dark:bg-gray-800 dark:border-gray-700">
     <div class="max-w-4xl mx-auto px-4 py-3 md:py-4">
       <div class="flex items-center justify-between">
-        <h1 class="text-lg md:text-xl font-bold text-gray-800 dark:text-gray-100">AI 面试备题</h1>
+        <h1 class="text-lg md:text-xl font-bold text-gray-800 dark:text-gray-100">我的面试题库</h1>
         <div class="flex items-center gap-1">
           <button
             @click="toggle"

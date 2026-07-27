@@ -43,7 +43,7 @@ const router = createRouter({
 })
 
 // 路由切换时更新页面标题
-const SITE_NAME = 'AI 面试备题'
+const SITE_NAME = '我的面试题库'
 router.afterEach((to) => {
   const title = to.meta?.title
   document.title = title ? `${title} - ${SITE_NAME}` : SITE_NAME
