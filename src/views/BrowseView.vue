@@ -58,7 +58,7 @@ onMounted(() => {
 <template>
   <div class="w-[92%] md:w-full md:max-w-[720px] mx-auto">
     <!-- 加载中 -->
-    <div v-if="loading" class="text-center py-10 text-gray-400">加载中...</div>
+    <div v-if="loading" class="text-center py-10 text-gray-400 dark:text-gray-500">加载中...</div>
 
     <!-- 加载错误 -->
     <div v-else-if="loadError" class="text-center py-20">
@@ -68,7 +68,7 @@ onMounted(() => {
 
     <template v-else>
       <!-- 分类 Tab -->
-      <div class="border-b border-gray-200 mb-4">
+      <div class="border-b border-gray-200 mb-4 dark:border-gray-700">
         <CategoryTabs
           :categories="categoryList"
           :active-id="activeId"

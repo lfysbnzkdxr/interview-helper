@@ -20,11 +20,11 @@ const emit = defineEmits(['flip'])
   <div class="card-container w-full h-[65vh] min-h-[400px] max-h-[600px]">
     <div class="card-inner" :class="{ flipped: isFlipped }">
       <!-- 正面 -->
-      <div class="card-face card-front bg-white rounded-2xl shadow-lg border border-gray-100">
+      <div class="card-face card-front bg-white rounded-2xl shadow-lg border border-gray-100 dark:bg-gray-800 dark:border-gray-700">
         <CardFront :question="question" @flip="emit('flip')" />
       </div>
       <!-- 背面 -->
-      <div class="card-face card-back bg-white rounded-2xl shadow-lg border border-gray-100">
+      <div class="card-face card-back bg-white rounded-2xl shadow-lg border border-gray-100 dark:bg-gray-800 dark:border-gray-700">
         <CardBack :question="question" @flip="emit('flip')" />
       </div>
     </div>

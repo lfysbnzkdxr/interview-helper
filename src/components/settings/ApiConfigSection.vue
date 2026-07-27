@@ -110,24 +110,24 @@ async function handleTest(provider) {
 </script>
 
 <template>
-  <section class="bg-white rounded-lg border border-gray-200 p-5">
-    <div v-if="message" class="mb-3 p-3 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm">
+  <section class="bg-white rounded-lg border border-gray-200 p-5 dark:bg-gray-800 dark:border-gray-700">
+    <div v-if="message" class="mb-3 p-3 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm dark:bg-green-900/30 dark:border-green-800 dark:text-green-400">
       {{ message }}
     </div>
     <div class="flex items-center justify-between mb-4">
-      <h3 class="font-medium text-gray-800">AI 模型配置</h3>
+      <h3 class="font-medium text-gray-800 dark:text-gray-100">AI 模型配置</h3>
       <button @click="showAddMenu = !showAddMenu" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-500 text-white hover:bg-blue-600">
         + 添加提供商
       </button>
     </div>
 
-    <div v-if="showAddMenu" class="mb-4 p-4 rounded-lg bg-gray-50 border border-gray-200">
-      <p class="text-sm text-gray-600 mb-2">选择预设：</p>
+    <div v-if="showAddMenu" class="mb-4 p-4 rounded-lg bg-gray-50 border border-gray-200 dark:bg-gray-700 dark:border-gray-600">
+      <p class="text-sm text-gray-600 dark:text-gray-300 mb-2">选择预设：</p>
       <div class="flex flex-wrap gap-2 mb-3">
         <button
           v-for="preset in PROVIDER_PRESETS" :key="preset.id"
           @click="addFromPreset(preset)"
-          class="px-3 py-1.5 rounded-full text-sm border border-gray-300 hover:border-blue-400 hover:bg-blue-50 transition-colors"
+          class="px-3 py-1.5 rounded-full text-sm border border-gray-300 hover:border-blue-400 hover:bg-blue-50 transition-colors dark:border-gray-600 dark:hover:border-blue-400 dark:hover:bg-blue-900/30"
         >
           {{ preset.name }}
         </button>
@@ -136,10 +136,10 @@ async function handleTest(provider) {
         {{ showCustomForm ? '收起自定义' : '自定义提供商...' }}
       </button>
       <div v-if="showCustomForm" class="mt-3 space-y-2">
-        <input v-model="customProvider.name" placeholder="名称" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm" />
-        <input v-model="customProvider.baseUrl" placeholder="API 地址" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm" />
-        <input v-model="customProvider.models" placeholder="模型名（逗号分隔）" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm" />
-        <select v-model="customProvider.apiFormat" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm">
+        <input v-model="customProvider.name" placeholder="名称" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" />
+        <input v-model="customProvider.baseUrl" placeholder="API 地址" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" />
+        <input v-model="customProvider.models" placeholder="模型名（逗号分隔）" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" />
+        <select v-model="customProvider.apiFormat" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100">
           <option value="openai">OpenAI 兼容格式</option>
           <option value="anthropic">Anthropic (Claude) 格式</option>
         </select>
@@ -147,11 +147,11 @@ async function handleTest(provider) {
       </div>
     </div>
 
-    <div v-if="apiConfig.providers.length === 0" class="text-center py-8 text-gray-400 text-sm">
+    <div v-if="apiConfig.providers.length === 0" class="text-center py-8 text-gray-400 dark:text-gray-500 text-sm">
       还未添加任何提供商，请点击右上角「添加提供商」开始配置
     </div>
 
-    <div v-for="provider in apiConfig.providers" :key="provider.id" class="mb-4 p-4 rounded-lg border transition-colors"
+    <div v-for="provider in apiConfig.providers" :key="provider.id" class="mb-4 p-4 rounded-lg border transition-colors dark:border-gray-600"
       :class="provider.id === apiConfig.activeId ? 'border-blue-300 bg-blue-50/50' : 'border-gray-200'">
       <div class="flex items-center justify-between mb-3">
         <div class="flex items-center gap-2">
@@ -167,7 +167,7 @@ async function handleTest(provider) {
           <div class="relative">
             <input v-model="provider.apiKey" :type="visibleKeys[provider.id] ? 'text' : 'password'"
               :placeholder="provider.keyPlaceholder || 'sk-...'"
-              class="w-full px-3 py-2 pr-10 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+              class="w-full px-3 py-2 pr-10 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" />
             <button type="button" @click="visibleKeys[provider.id] = !visibleKeys[provider.id]"
               class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
               <svg v-if="!visibleKeys[provider.id]" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -178,17 +178,17 @@ async function handleTest(provider) {
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-xs text-gray-500 mb-1">模型</label>
-            <select v-model="provider.model" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm">
+            <select v-model="provider.model" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100">
               <option v-for="m in provider.models" :key="m" :value="m">{{ m }}</option>
             </select>
           </div>
           <div>
             <label class="block text-xs text-gray-500 mb-1">Temperature</label>
-            <input v-model.number="provider.temperature" type="number" min="0" max="2" step="0.1" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm" />
+            <input v-model.number="provider.temperature" type="number" min="0" max="2" step="0.1" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" />
           </div>
         </div>
         <button @click="handleTest(provider)" :disabled="testing && testingId === provider.id"
-          class="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-700 hover:bg-gray-200">
+          class="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-600 dark:text-gray-300 dark:hover:bg-gray-500">
           {{ testing && testingId === provider.id ? '测试中...' : '测试连接' }}
         </button>
       </div>

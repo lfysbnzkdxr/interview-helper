@@ -16,7 +16,7 @@ const renderedDialog = computed(() => renderMarkdown(props.question.dialog))
 </script>
 
 <template>
-  <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden transition-shadow hover:shadow-md">
+  <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden transition-shadow hover:shadow-md dark:bg-gray-800 dark:border-gray-700">
     <!-- 题目摘要 -->
     <div class="p-4 md:p-5">
       <div class="flex items-start justify-between gap-3">
@@ -29,7 +29,7 @@ const renderedDialog = computed(() => renderMarkdown(props.question.dialog))
               {{ question.difficulty }}
             </span>
           </div>
-          <h3 class="text-base font-medium text-gray-800 leading-relaxed">
+          <h3 class="text-base font-medium text-gray-800 leading-relaxed dark:text-gray-100">
             {{ question.question }}
           </h3>
         </div>
@@ -56,7 +56,7 @@ const renderedDialog = computed(() => renderMarkdown(props.question.dialog))
     >
       <div v-if="isExpanded" class="overflow-hidden">
         <div class="px-4 md:px-5 pb-4 md:pb-5">
-          <div class="rounded-lg bg-gray-50 p-4 max-h-[60vh] overflow-y-auto prose-content">
+          <div class="rounded-lg bg-gray-50 p-4 max-h-[60vh] overflow-y-auto prose-content dark:bg-gray-700">
             <div v-html="renderedDialog"></div>
           </div>
         </div>

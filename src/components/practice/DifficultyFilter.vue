@@ -20,7 +20,7 @@ const options = ['全部', '初级', '中级', '高级']
       class="px-4 py-2 min-h-[36px] rounded-full text-sm font-medium transition-all duration-200"
       :class="current === opt
         ? 'bg-blue-500 text-white shadow-sm'
-        : 'bg-white text-gray-600 border border-gray-200 hover:border-blue-300 hover:text-blue-600'"
+        : 'bg-white text-gray-600 border border-gray-200 hover:border-blue-300 hover:text-blue-600 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:border-blue-500 dark:hover:text-blue-400'"
     >
       {{ opt }}
     </button>

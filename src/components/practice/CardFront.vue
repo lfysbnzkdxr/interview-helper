@@ -28,7 +28,7 @@ defineEmits(['flip'])
 
     <!-- 题目文本（垂直居中） -->
     <div class="flex-1 flex items-center justify-center">
-      <p class="text-lg md:text-xl font-medium text-gray-800 text-center leading-relaxed">
+      <p class="text-lg md:text-xl font-medium text-gray-800 text-center leading-relaxed dark:text-gray-100">
         {{ question.question }}
       </p>
     </div>

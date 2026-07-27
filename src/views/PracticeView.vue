@@ -55,7 +55,7 @@ function onTouchEnd(e) {
   <div class="w-[92%] md:w-full md:max-w-[640px] mx-auto">
     <!-- 加载中 -->
     <div v-if="loading" class="flex items-center justify-center h-[50vh]">
-      <p class="text-gray-400">加载题目中...</p>
+      <p class="text-gray-400 dark:text-gray-500">加载题目中...</p>
     </div>
 
     <!-- 加载错误 -->
@@ -76,7 +76,7 @@ function onTouchEnd(e) {
       <select
         :value="category"
         @change="setCategory(($event.target).value)"
-        class="px-3 py-1.5 rounded-lg border border-gray-300 text-xs bg-white"
+        class="px-3 py-1.5 rounded-lg border border-gray-300 text-xs bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
       >
         <option value="全部">全部分类</option>
         <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>

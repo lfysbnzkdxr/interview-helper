@@ -19,7 +19,7 @@ defineProps({
 
     <!-- 空状态 -->
     <div v-if="questions.length === 0" class="text-center py-12">
-      <p class="text-gray-400">该分类下暂无题目</p>
+      <p class="text-gray-400 dark:text-gray-500">该分类下暂无题目</p>
     </div>
   </div>
 </template>

@@ -50,11 +50,11 @@ async function removeCategory(name) {
 </script>
 
 <template>
-  <section class="bg-white rounded-lg border border-gray-200 p-5">
-    <div v-if="message" class="mb-3 p-3 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm">
+  <section class="bg-white rounded-lg border border-gray-200 p-5 dark:bg-gray-800 dark:border-gray-700">
+    <div v-if="message" class="mb-3 p-3 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm dark:bg-green-900/30 dark:border-green-800 dark:text-green-400">
       {{ message }}
     </div>
-    <h3 class="font-medium text-gray-800 mb-4">分类管理</h3>
+    <h3 class="font-medium text-gray-800 dark:text-gray-100 mb-4">分类管理</h3>
     <div class="flex flex-wrap gap-2 mb-3">
       <span v-for="cat in cats" :key="cat" class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-sm">
         {{ cat }}
@@ -62,7 +62,7 @@ async function removeCategory(name) {
       </span>
     </div>
     <div class="flex gap-2">
-      <input v-model="newCategory" type="text" placeholder="新分类名称" class="flex-1 px-3 py-2 rounded-lg border border-gray-300 text-sm" @keyup.enter="addCategory" />
+      <input v-model="newCategory" type="text" placeholder="新分类名称" class="flex-1 px-3 py-2 rounded-lg border border-gray-300 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" @keyup.enter="addCategory" />
       <button @click="addCategory" class="px-4 py-2 rounded-lg text-sm font-medium bg-blue-500 text-white hover:bg-blue-600">添加</button>
     </div>
   </section>
