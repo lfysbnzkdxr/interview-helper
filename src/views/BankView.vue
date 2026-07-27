@@ -5,7 +5,7 @@ import { renderMarkdown } from '../utils/markdown.js'
 import { getDifficultyColor } from '../utils/helpers.js'
 import { polishDialog, appendSubQA } from '../services/llm.js'
 
-const { questions, categories, loading, load, deleteQuestion, deleteQuestions, toggleHidden, setHidden, updateQuestion, saveCategories } = useQuestionBank()
+const { questions, categories, loading, load, deleteQuestion, batchUpdate, batchDelete, toggleHidden, setHidden, updateQuestion, saveCategories } = useQuestionBank()
 
 const searchQuery = ref('')
 const filterCategory = ref('')
@@ -94,21 +94,18 @@ async function handleDelete(id) {
 
 async function handleBatchDelete() {
   if (!confirm(`确定删除选中的 ${selectedIds.value.length} 道题吗？`)) return
-  await deleteQuestions(selectedIds.value)
+  const ids = [...selectedIds.value]
   selectedIds.value = []
+  await batchDelete(ids)
 }
 
 async function handleBatchHide() {
-  for (const id of selectedIds.value) {
-    await setHidden(id, true)
-  }
+  await batchUpdate([...selectedIds.value], { hidden: true })
   selectedIds.value = []
 }
 
 async function handleBatchUnhide() {
-  for (const id of selectedIds.value) {
-    await setHidden(id, false)
-  }
+  await batchUpdate([...selectedIds.value], { hidden: false })
   selectedIds.value = []
 }
 
@@ -132,10 +129,8 @@ async function confirmBatchNewCategory() {
   }
   showBatchNewCategory.value = false
   batchNewCategoryName.value = ''
-  // 用户点击“确定”创建分类时意图已明确，直接执行移动
-  for (const id of selectedIds.value) {
-    await updateQuestion(id, { category: name })
-  }
+  // 用户点击"确定"创建分类时意图已明确，直接执行移动
+  await batchUpdate([...selectedIds.value], { category: name })
   selectedIds.value = []
   batchCategory.value = ''
 }
@@ -151,9 +146,7 @@ async function handleBatchMove(cat) {
     batchCategory.value = ''
     return
   }
-  for (const id of selectedIds.value) {
-    await updateQuestion(id, { category: cat })
-  }
+  await batchUpdate([...selectedIds.value], { category: cat })
   selectedIds.value = []
   batchCategory.value = ''
 }
