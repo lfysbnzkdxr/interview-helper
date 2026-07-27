@@ -235,34 +235,46 @@ function extractJSON(content) {
 }
 
 /**
- * 调用 LLM 优化面试问答
- * @param {string} question - 面试问题
- * @param {string} answer - 答案要点
+ * 统一 LLM 调用入口
+ * @param {string} systemPrompt - 系统提示词
+ * @param {string} userContent - 用户内容
+ * @param {object} options - { timeout?, maxTokens?, temperature? }
  * @returns {Promise<{optimized_question, dialog, difficulty}>}
  */
-export async function optimizeQA(question, answer) {
+async function callLLM(systemPrompt, userContent, options = {}) {
   const provider = await getActiveProvider()
-  const userContent = `【问题】${question}\n【答案】${answer}`
 
   let req
   if (provider.apiFormat === 'anthropic') {
-    req = buildAnthropicRequest(provider, OPTIMIZE_PROMPT, userContent)
+    req = buildAnthropicRequest(provider, systemPrompt, userContent, options)
   } else {
     req = buildOpenAIRequest(provider, [
-      { role: 'system', content: OPTIMIZE_PROMPT },
+      { role: 'system', content: systemPrompt },
       { role: 'user', content: userContent },
-    ])
+    ], options)
   }
 
-  const response = await fetch(req.url, {
-    method: 'POST',
-    headers: req.headers,
-    body: JSON.stringify(req.body),
-  })
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), options.timeout ?? 60000)
+
+  let response
+  try {
+    response = await fetch(req.url, {
+      method: 'POST',
+      headers: req.headers,
+      body: JSON.stringify(req.body),
+      signal: controller.signal,
+    })
+  } catch (e) {
+    clearTimeout(timeout)
+    if (e.name === 'AbortError') throw new Error('AI 请求超时（60秒），请检查网络后重试')
+    throw new Error('网络连接失败: ' + e.message)
+  }
+  clearTimeout(timeout)
 
   if (!response.ok) {
     const errText = await response.text().catch(() => '')
-    throw new Error(`API 请求失败 (${response.status}): ${errText || '未知错误'}`)
+    throw new Error(`API 请求失败 (${response.status}): ${errText.slice(0, 200) || '未知错误'}`)
   }
 
   const data = await response.json()
@@ -273,41 +285,37 @@ export async function optimizeQA(question, answer) {
 }
 
 /**
+ * 带自动重试的 LLM 调用
+ * 网络/超时错误自动重试 1 次（延迟 2s），API 业务错误不重试
+ */
+async function callLLMWithRetry(systemPrompt, userContent, options = {}) {
+  try {
+    return await callLLM(systemPrompt, userContent, options)
+  } catch (e) {
+    if (e.message.includes('超时') || e.message.includes('网络连接失败')) {
+      await new Promise(r => setTimeout(r, 2000))
+      return await callLLM(systemPrompt, userContent, options)
+    }
+    throw e
+  }
+}
+
+/**
+ * 调用 LLM 优化面试问答
+ * @param {string} question - 面试问题
+ * @param {string} answer - 答案要点
+ * @returns {Promise<{optimized_question, dialog, difficulty}>}
+ */
+export const optimizeQA = (question, answer) =>
+  callLLMWithRetry(OPTIMIZE_PROMPT, `【问题】${question}\n【答案】${answer}`)
+
+/**
  * 调用 LLM 根据问题自动生成完整对话
  * @param {string} question - 面试问题
  * @returns {Promise<{optimized_question, dialog, difficulty}>}
  */
-export async function generateQA(question) {
-  const provider = await getActiveProvider()
-  const userContent = `【问题】${question}`
-
-  let req
-  if (provider.apiFormat === 'anthropic') {
-    req = buildAnthropicRequest(provider, GENERATE_PROMPT, userContent)
-  } else {
-    req = buildOpenAIRequest(provider, [
-      { role: 'system', content: GENERATE_PROMPT },
-      { role: 'user', content: userContent },
-    ])
-  }
-
-  const response = await fetch(req.url, {
-    method: 'POST',
-    headers: req.headers,
-    body: JSON.stringify(req.body),
-  })
-
-  if (!response.ok) {
-    const errText = await response.text().catch(() => '')
-    throw new Error(`API 请求失败 (${response.status}): ${errText || '未知错误'}`)
-  }
-
-  const data = await response.json()
-  const content = parseResponse(data, provider.apiFormat)
-  const result = extractJSON(content)
-  if (!result) throw new Error('AI 返回格式异常，请重试')
-  return result
-}
+export const generateQA = (question) =>
+  callLLMWithRetry(GENERATE_PROMPT, `【问题】${question}`)
 
 /**
  * 调用 LLM 润色现有对话
@@ -315,37 +323,8 @@ export async function generateQA(question) {
  * @param {string} dialog - 现有对话内容
  * @returns {Promise<{optimized_question, dialog, difficulty}>}
  */
-export async function polishDialog(question, dialog) {
-  const provider = await getActiveProvider()
-  const userContent = `【问题】${question}\n【现有对话】${dialog}`
-
-  let req
-  if (provider.apiFormat === 'anthropic') {
-    req = buildAnthropicRequest(provider, POLISH_PROMPT, userContent)
-  } else {
-    req = buildOpenAIRequest(provider, [
-      { role: 'system', content: POLISH_PROMPT },
-      { role: 'user', content: userContent },
-    ])
-  }
-
-  const response = await fetch(req.url, {
-    method: 'POST',
-    headers: req.headers,
-    body: JSON.stringify(req.body),
-  })
-
-  if (!response.ok) {
-    const errText = await response.text().catch(() => '')
-    throw new Error(`API 请求失败 (${response.status}): ${errText || '未知错误'}`)
-  }
-
-  const data = await response.json()
-  const content = parseResponse(data, provider.apiFormat)
-  const result = extractJSON(content)
-  if (!result) throw new Error('AI 返回格式异常，请重试')
-  return result
-}
+export const polishDialog = (question, dialog) =>
+  callLLMWithRetry(POLISH_PROMPT, `【问题】${question}\n【现有对话】${dialog}`, { maxTokens: 4000 })
 
 /**
  * 调用 LLM 为新增子问题生成回答并追加到对话
@@ -354,37 +333,8 @@ export async function polishDialog(question, dialog) {
  * @param {string} newSubQuestion - 新增子问题
  * @returns {Promise<{optimized_question, dialog, difficulty}>}
  */
-export async function appendSubQA(question, existingDialog, newSubQuestion) {
-  const provider = await getActiveProvider()
-  const userContent = `【主题】${question}\n【现有对话】${existingDialog}\n【新增子问题】${newSubQuestion}`
-
-  let req
-  if (provider.apiFormat === 'anthropic') {
-    req = buildAnthropicRequest(provider, APPEND_PROMPT, userContent)
-  } else {
-    req = buildOpenAIRequest(provider, [
-      { role: 'system', content: APPEND_PROMPT },
-      { role: 'user', content: userContent },
-    ])
-  }
-
-  const response = await fetch(req.url, {
-    method: 'POST',
-    headers: req.headers,
-    body: JSON.stringify(req.body),
-  })
-
-  if (!response.ok) {
-    const errText = await response.text().catch(() => '')
-    throw new Error(`API 请求失败 (${response.status}): ${errText || '未知错误'}`)
-  }
-
-  const data = await response.json()
-  const content = parseResponse(data, provider.apiFormat)
-  const result = extractJSON(content)
-  if (!result) throw new Error('AI 返回格式异常，请重试')
-  return result
-}
+export const appendSubQA = (question, existingDialog, newSubQuestion) =>
+  callLLMWithRetry(APPEND_PROMPT, `【主题】${question}\n【现有对话】${existingDialog}\n【新增子问题】${newSubQuestion}`, { maxTokens: 4000 })
 
 /**
  * 测试指定提供商的连接
