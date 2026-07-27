@@ -36,7 +36,7 @@ export function useQuestionBank() {
         }
       }
 
-      // 确保「未分类」始终存在于分类列表
+      // 兑容迁移：旧版本初始化的数据库可能缺少「未分类」
       if (!categories.value.includes('未分类')) {
         categories.value.push('未分类')
         await db.put('settings', { key: 'categories', value: JSON.parse(JSON.stringify(categories.value)) })

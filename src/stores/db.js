@@ -44,8 +44,9 @@ export async function initDB() {
   const initialized = await db.get('settings', 'initialized')
   if (initialized) return
 
-  // 导入分类
+  // 导入分类（「未分类」为系统默认，始终存在且固定在末尾）
   const categories = seedData.categories.map(c => c.display_name)
+  if (!categories.includes('未分类')) categories.push('未分类')
   await db.put('settings', { key: 'categories', value: categories })
 
   // 导入默认 API 配置
