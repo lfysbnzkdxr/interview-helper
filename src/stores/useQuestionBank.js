@@ -121,6 +121,41 @@ export function useQuestionBank() {
   }
 
   /**
+   * 批量更新（单事务）
+   * 对指定 id 列表执行统一字段更新，大幅减少 IndexedDB 事务次数
+   * @param {string[]} ids - 题目 id 列表
+   * @param {object} updates - 要更新的字段
+   */
+  async function batchUpdate(ids, updates) {
+    const db = await getDB()
+    const tx = db.transaction('questions', 'readwrite')
+    const idSet = new Set(ids)
+    for (const id of ids) {
+      const existing = await tx.store.get(id)
+      if (existing) {
+        await tx.store.put({ ...existing, ...updates, updatedAt: Date.now() })
+      }
+    }
+    await tx.done
+    questions.value = questions.value.map(q =>
+      idSet.has(q.id) ? { ...q, ...updates, updatedAt: Date.now() } : q
+    )
+  }
+
+  /**
+   * 批量删除（单事务）
+   * @param {string[]} ids - 要删除的题目 id 列表
+   */
+  async function batchDelete(ids) {
+    const db = await getDB()
+    const tx = db.transaction('questions', 'readwrite')
+    for (const id of ids) await tx.store.delete(id)
+    await tx.done
+    const idSet = new Set(ids)
+    questions.value = questions.value.filter(q => !idSet.has(q.id))
+  }
+
+  /**
    * 隐藏/显示内置题
    */
   async function toggleHidden(id) {
@@ -347,7 +382,8 @@ export function useQuestionBank() {
     addQuestion,
     updateQuestion,
     deleteQuestion,
-    deleteQuestions,
+    batchUpdate,
+    batchDelete,
     toggleHidden,
     setHidden,
     getApiConfig,

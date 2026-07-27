@@ -108,16 +108,12 @@ async function handleBatchDelete() {
 }
 
 async function handleBatchHide() {
-  for (const id of selectedIds.value) {
-    await setHidden(id, true)
-  }
+  await batchUpdate([...selectedIds.value], { hidden: true })
   selectedIds.value = []
 }
 
 async function handleBatchUnhide() {
-  for (const id of selectedIds.value) {
-    await setHidden(id, false)
-  }
+  await batchUpdate([...selectedIds.value], { hidden: false })
   selectedIds.value = []
 }
 
@@ -141,10 +137,8 @@ async function confirmBatchNewCategory() {
   }
   showBatchNewCategory.value = false
   batchNewCategoryName.value = ''
-  // 用户点击“确定”创建分类时意图已明确，直接执行移动
-  for (const id of selectedIds.value) {
-    await updateQuestion(id, { category: name })
-  }
+  // 用户点击"确定"创建分类时意图已明确，直接执行移动
+  await batchUpdate([...selectedIds.value], { category: name })
   selectedIds.value = []
   batchCategory.value = ''
 }
@@ -160,9 +154,7 @@ async function handleBatchMove(cat) {
     batchCategory.value = ''
     return
   }
-  for (const id of selectedIds.value) {
-    await updateQuestion(id, { category: cat })
-  }
+  await batchUpdate([...selectedIds.value], { category: cat })
   selectedIds.value = []
   batchCategory.value = ''
 }
