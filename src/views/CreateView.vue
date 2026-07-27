@@ -3,8 +3,10 @@ import { ref, computed, onMounted } from 'vue'
 import { useQuestionBank } from '../stores/useQuestionBank.js'
 import { optimizeQA, generateQA } from '../services/llm.js'
 import { renderMarkdown } from '../utils/markdown.js'
+import { useToast } from '../composables/useToast.js'
 
 const { categories, addQuestion, load, saveCategories } = useQuestionBank()
+const { success } = useToast()
 
 onMounted(() => load())
 
@@ -111,7 +113,7 @@ async function handleSave() {
     answer.value = ''
     preview.value = null
     error.value = ''
-    alert('已保存到题库！')
+    success('已保存到题库！')
   } catch (e) {
     error.value = '保存失败: ' + e.message
   }

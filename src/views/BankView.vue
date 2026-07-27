@@ -4,8 +4,14 @@ import { useQuestionBank } from '../stores/useQuestionBank.js'
 import { renderMarkdown } from '../utils/markdown.js'
 import { getDifficultyColor } from '../utils/helpers.js'
 import { polishDialog, appendSubQA } from '../services/llm.js'
+import { useToast } from '../composables/useToast.js'
+import { useConfirm } from '../composables/useConfirm.js'
+import ConfirmModal from '../components/ui/ConfirmModal.vue'
 
-const { questions, categories, loading, load, deleteQuestion, deleteQuestions, toggleHidden, setHidden, updateQuestion, saveCategories } = useQuestionBank()
+const { confirm } = useConfirm()
+const { success } = useToast()
+
+const { questions, categories, loading, loadError, load, reload, deleteQuestion, deleteQuestions, toggleHidden, setHidden, updateQuestion, saveCategories } = useQuestionBank()
 
 const searchQuery = ref('')
 const filterCategory = ref('')
@@ -88,14 +94,17 @@ function selectAll() {
 }
 
 async function handleDelete(id) {
-  if (!confirm('确定删除这道题吗？')) return
+  if (!await confirm({ title: '删除确认', message: '确定删除这道题吗？', danger: true })) return
   await deleteQuestion(id)
+  success('已删除')
 }
 
 async function handleBatchDelete() {
-  if (!confirm(`确定删除选中的 ${selectedIds.value.length} 道题吗？`)) return
+  const count = selectedIds.value.length
+  if (!await confirm({ title: '批量删除确认', message: `确定删除选中的 ${count} 道题吗？`, danger: true })) return
   await deleteQuestions(selectedIds.value)
   selectedIds.value = []
+  success(`已删除 ${count} 道题`)
 }
 
 async function handleBatchHide() {
@@ -147,7 +156,7 @@ function cancelBatchNewCategory() {
 
 async function handleBatchMove(cat) {
   if (!cat) return
-  if (!confirm(`确定将选中的 ${selectedIds.value.length} 道题移动到「${cat}」吗？`)) {
+  if (!await confirm({ title: '批量移动确认', message: `确定将选中的 ${selectedIds.value.length} 道题移动到「${cat}」吗？` })) {
     batchCategory.value = ''
     return
   }
@@ -291,6 +300,12 @@ function cancelEdit() {
     <!-- 加载中 -->
     <div v-if="loading" class="text-center py-10 text-gray-400">加载中...</div>
 
+    <!-- 加载错误 -->
+    <div v-else-if="loadError" class="text-center py-10">
+      <p class="text-red-500 mb-4">{{ loadError }}</p>
+      <button @click="reload" class="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm">重试</button>
+    </div>
+
     <!-- 空状态 -->
     <div v-else-if="filteredQuestions.length === 0" class="text-center py-10 text-gray-400">
       {{ questions.length === 0 ? '题库为空，去创建第一道题吧' : '没有匹配的题目' }}
@@ -427,4 +442,7 @@ function cancelEdit() {
       </div>
     </div>
   </Teleport>
+
+  <!-- 确认对话框 -->
+  <ConfirmModal />
 </template>
