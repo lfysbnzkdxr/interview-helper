@@ -11,6 +11,8 @@
  *   X-Api-Format  - 'openai' | 'anthropic'（默认 openai）
  */
 
+import { rateLimit, getClientIP } from './_utils.js'
+
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -33,7 +35,7 @@ const ALLOWED_HOSTS = [
 ]
 
 export async function onRequest(context) {
-  const { request } = context
+  const { request, env } = context
 
   // 预检请求
   if (request.method === 'OPTIONS') {
@@ -48,6 +50,15 @@ export async function onRequest(context) {
   }
 
   try {
+    // 速率限制：每 IP 每分钟 10 次
+    const ip = getClientIP(request)
+    const allowed = await rateLimit(env, `${ip}:llm`, 10, 60)
+    if (!allowed) {
+      return new Response(JSON.stringify({ error: 'Too many requests, please try again later' }), {
+        status: 429,
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+      })
+    }
     const targetUrl = request.headers.get('X-Target-Url')
     const apiKey = request.headers.get('X-Api-Key')
     const apiFormat = request.headers.get('X-Api-Format') || 'openai'
@@ -103,11 +114,17 @@ export async function onRequest(context) {
       forwardHeaders['Authorization'] = `Bearer ${apiKey}`
     }
 
+    // 65 秒超时控制（需大于客户端 60s 超时，避免截断正常响应）
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 65000)
+
     const response = await fetch(targetUrl, {
       method: 'POST',
       headers: forwardHeaders,
       body,
+      signal: controller.signal,
     })
+    clearTimeout(timer)
 
     const data = await response.text()
 
@@ -116,7 +133,13 @@ export async function onRequest(context) {
       headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
     })
   } catch (e) {
-    return new Response(JSON.stringify({ error: 'Proxy error: ' + e.message }), {
+    if (e.name === 'AbortError') {
+      return new Response(JSON.stringify({ error: '请求超时，请稍后重试' }), {
+        status: 504,
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+      })
+    }
+    return new Response(JSON.stringify({ error: 'Proxy internal error' }), {
       status: 502,
       headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
     })

@@ -84,6 +84,14 @@ async function handleLLMProxy(request) {
 
     const body = await request.text()
 
+    // 限制请求体大小（100KB）
+    if (body.length > 100 * 1024) {
+      return new Response(JSON.stringify({ error: 'Request body too large (max 100KB)' }), {
+        status: 413,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
     // 根据 API 格式构建不同的认证头
     const forwardHeaders = { 'Content-Type': 'application/json' }
     if (apiFormat === 'anthropic') {
@@ -93,11 +101,17 @@ async function handleLLMProxy(request) {
       forwardHeaders['Authorization'] = `Bearer ${apiKey}`
     }
 
+    // 65 秒超时控制（需大于客户端 60s 超时，避免截断正常响应）
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 65000)
+
     const response = await fetch(targetUrl, {
       method: 'POST',
       headers: forwardHeaders,
       body,
+      signal: controller.signal,
     })
+    clearTimeout(timer)
 
     const data = await response.text()
 
@@ -106,7 +120,13 @@ async function handleLLMProxy(request) {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   } catch (e) {
-    return new Response(JSON.stringify({ error: 'Proxy error: ' + e.message }), {
+    if (e.name === 'AbortError') {
+      return new Response(JSON.stringify({ error: '请求超时，请稍后重试' }), {
+        status: 504,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+    return new Response(JSON.stringify({ error: 'Proxy internal error' }), {
       status: 502,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })

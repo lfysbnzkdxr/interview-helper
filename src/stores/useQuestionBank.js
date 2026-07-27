@@ -224,9 +224,17 @@ export function useQuestionBank() {
       await tx.done
     }
 
+    // 字段白名单：防止原型污染或任意属性注入
+    const ALLOWED_FIELDS = ['id', 'category', 'question', 'dialog', 'difficulty', 'source', 'builtIn', 'hidden', 'createdAt', 'updatedAt']
+
     if (data.questions && Array.isArray(data.questions)) {
       const tx = db.transaction('questions', 'readwrite')
-      for (const q of data.questions) {
+      for (const raw of data.questions) {
+        const q = {}
+        for (const f of ALLOWED_FIELDS) {
+          if (raw[f] !== undefined) q[f] = raw[f]
+        }
+        if (!q.id || !q.question) continue // 跳过无效记录
         await tx.store.put(q)
       }
       await tx.done
