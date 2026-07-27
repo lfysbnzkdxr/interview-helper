@@ -34,10 +34,12 @@ export function useQuestionBank() {
           q.updatedAt = Date.now()
           await db.put('questions', JSON.parse(JSON.stringify(q)))
         }
-        if (!categories.value.includes('未分类')) {
-          categories.value.push('未分类')
-          await db.put('settings', { key: 'categories', value: JSON.parse(JSON.stringify(categories.value)) })
-        }
+      }
+
+      // 确保「未分类」始终存在于分类列表
+      if (!categories.value.includes('未分类')) {
+        categories.value.push('未分类')
+        await db.put('settings', { key: 'categories', value: JSON.parse(JSON.stringify(categories.value)) })
       }
 
       loaded.value = true
