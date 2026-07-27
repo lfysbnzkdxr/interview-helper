@@ -14,7 +14,7 @@ function shuffle(arr) {
 }
 
 export function useQuestionQueue() {
-  const { questions: storeQuestions, loading: storeLoading, load } = useQuestionBank()
+  const { visibleQuestions: storeQuestions, loading: storeLoading, load } = useQuestionBank()
 
   const queue = ref([])
   const currentIndex = ref(0)
@@ -27,7 +27,7 @@ export function useQuestionQueue() {
   const progress = computed(() => `${currentIndex.value + 1} / ${queue.value.length}`)
 
   function getPool(diff) {
-    const visible = storeQuestions.value.filter(q => !q.hidden)
+    const visible = storeQuestions.value
     if (diff === '全部') return visible
     return visible.filter(q => q.difficulty === diff)
   }

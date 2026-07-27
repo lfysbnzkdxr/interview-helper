@@ -4,7 +4,7 @@ import CategoryTabs from '../components/browse/CategoryTabs.vue'
 import QuestionList from '../components/browse/QuestionList.vue'
 import { useQuestionBank } from '../stores/useQuestionBank.js'
 
-const { questions, categories, loading, load, saveCategories } = useQuestionBank()
+const { visibleQuestions: questions, categories, loading, load, saveCategories } = useQuestionBank()
 
 const activeName = ref(null) // 当前选中分类名称，null 表示「全部」
 
@@ -29,9 +29,8 @@ const activeId = computed(() => {
 })
 
 const filteredQuestions = computed(() => {
-  const visible = questions.value.filter(q => !q.hidden)
-  if (activeName.value === null) return visible
-  return visible.filter(q => q.category === activeName.value)
+  if (activeName.value === null) return questions.value
+  return questions.value.filter(q => q.category === activeName.value)
 })
 
 function handleSelect(id) {
